@@ -6,6 +6,17 @@ WishSim uses original characters, weapons, lore, and artwork. It is an unofficia
 
 ## Install a release
 
+### Homebrew (macOS)
+
+```sh
+brew tap TMAH1602/wishsim
+brew install wishsim
+```
+
+Then launch it with `wishsim`. Run it directly in Kitty for full-resolution character artwork; terminal multiplexers such as Zellij may block Kitty's graphics protocol.
+
+### Download an archive
+
 Download the archive for your system from the [latest GitHub release](../../releases/latest):
 
 - `wishsim-macos-arm64` for Apple Silicon Macs
@@ -57,7 +68,7 @@ The interactive controls are shown on screen:
 
 Inventory deletion never changes pity or wish history. Every deletion, including individual and batch deletion, requires confirmation.
 
-Kitty is detected automatically. Character portraits use Kitty's graphics protocol when available and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder is needed beside a release binary.
+Kitty is detected automatically. Character portraits use Kitty's graphics protocol when available and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder is needed beside a release binary. Run WishSim outside Zellij for native Kitty artwork.
 
 ## CLI mode
 
