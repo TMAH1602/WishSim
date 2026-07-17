@@ -1,5 +1,11 @@
-use std::time::Instant;
+use std::{collections::BTreeSet, time::Instant};
 
+use crate::{
+    app::{App, Phase},
+    art::{CharacterGallery, TerminalRaster},
+    model::{Banner, Rarity, WishResult},
+    simulation::catalog_item,
+};
 use ratatui::{
     Frame,
     buffer::Buffer,
@@ -9,32 +15,104 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Clear, Gauge, Padding, Paragraph, Widget, Wrap},
 };
 
-use crate::{
-    app::{App, Phase},
-    model::{Banner, Rarity, WishResult},
-};
-
 const GOLD: Color = Color::Rgb(255, 205, 90);
 const PURPLE: Color = Color::Rgb(198, 120, 255);
 const BLUE: Color = Color::Rgb(90, 180, 255);
 const DIM: Color = Color::Rgb(100, 115, 145);
 
+pub fn kitty_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
+    if app.confirm_quit || area.width < 80 || area.height < 34 {
+        return None;
+    }
+    match &app.phase {
+        Phase::Reveal { results, index, .. } if results[*index].item.kind == "Character" => {
+            let card = centered(area, 72.min(area.width - 8), 36.min(area.height - 4));
+            let inner = card.inner(ratatui::layout::Margin {
+                horizontal: 2,
+                vertical: 1,
+            });
+            let [sprite_area, _] =
+                Layout::vertical([Constraint::Min(8), Constraint::Length(6)]).areas(inner);
+            Some((results[*index].item.name, portrait_fit(sprite_area)))
+        }
+        Phase::Detail { results, selected } if results[*selected].item.kind == "Character" => {
+            Some((results[*selected].item.name, detail_portrait_area(area)))
+        }
+        Phase::InventoryDetail { name, .. }
+            if catalog_item(name).is_some_and(|item| item.kind == "Character") =>
+        {
+            Some((name, detail_portrait_area(area)))
+        }
+        _ => None,
+    }
+}
+
+fn detail_portrait_area(area: Rect) -> Rect {
+    let panel = centered(area, area.width.min(112), area.height.min(38));
+    let inner = panel.inner(ratatui::layout::Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [art_area, _] =
+        Layout::horizontal([Constraint::Percentage(42), Constraint::Percentage(58)])
+            .spacing(2)
+            .areas(inner);
+    portrait_fit(art_area.inner(ratatui::layout::Margin {
+        horizontal: 1,
+        vertical: 2,
+    }))
+}
+
+fn portrait_fit(area: Rect) -> Rect {
+    let width = area.width.min(area.height.saturating_mul(4) / 3).max(1);
+    let height = area.height.min(width.saturating_mul(3) / 4).max(1);
+    centered(area, width, height)
+}
+
 pub fn render(frame: &mut Frame, app: &App, now: Instant) {
     let area = frame.area();
     frame.render_widget(Block::new().bg(Color::Rgb(4, 7, 19)), area);
-    if area.width < 64 || area.height < 20 {
+    if area.width < 80 || area.height < 34 {
         frame.render_widget(
-            Paragraph::new("✦  WishSim needs a terminal at least 64 × 20\n\nResize the window, or press q to quit.")
+            Paragraph::new("✦  WishSim needs a terminal at least 80 × 34 for full character art\n\nResize the window, or press Q to open the exit prompt.")
                 .centered()
                 .style(Style::new().fg(GOLD)),
             area,
         );
+        if app.confirm_quit {
+            confirm_quit(frame);
+        }
         return;
     }
 
     match &app.phase {
         Phase::Home => home(frame, app),
         Phase::History => history(frame, app),
+        Phase::Inventory { cursor, selected } => inventory(frame, app, *cursor, selected),
+        Phase::InventoryDetail { name, .. } => {
+            if let Some(item) = catalog_item(name) {
+                let result = WishResult {
+                    item,
+                    rarity: item.rarity,
+                    featured: false,
+                    wish_number: 0,
+                };
+                detail(
+                    frame,
+                    &result,
+                    app.save.inventory.get(name).copied(),
+                    &app.gallery,
+                );
+            }
+        }
+        Phase::ConfirmInventoryDelete {
+            cursor,
+            selected,
+            targets,
+        } => {
+            inventory(frame, app, *cursor, selected);
+            confirm_inventory_delete(frame, targets);
+        }
         Phase::Flight { started, results } => {
             flight(frame, now.duration_since(*started).as_secs_f32(), results)
         }
@@ -48,6 +126,7 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
             &results[*index],
             *index,
             results.len(),
+            &app.gallery,
         ),
         Phase::FiveStarIntro {
             started,
@@ -60,7 +139,12 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
             *index,
         ),
         Phase::Summary { results, selected } => summary(frame, results, *selected),
-        Phase::Detail { results, selected } => detail(frame, &results[*selected]),
+        Phase::Detail { results, selected } => {
+            detail(frame, &results[*selected], None, &app.gallery)
+        }
+    }
+    if app.confirm_quit {
+        confirm_quit(frame);
     }
 }
 
@@ -140,10 +224,6 @@ fn home(frame: &mut Frame, app: &App) {
         horizontal: 2,
         vertical: 1,
     });
-    let [preview_area, copy_area] =
-        Layout::horizontal([Constraint::Percentage(34), Constraint::Percentage(66)])
-            .areas(hero_inner);
-    render_banner_art(frame, preview_area, app.banner);
     frame.render_widget(
         Paragraph::new(Text::from(vec![
             Line::from("✧     ✦       ·        ✧").fg(BLUE),
@@ -165,7 +245,7 @@ fn home(frame: &mut Frame, app: &App) {
             .fg(hero_color),
         ]))
         .alignment(Alignment::Center),
-        copy_area,
+        hero_inner,
     );
 
     let pity_width = area.width.min(78);
@@ -230,15 +310,20 @@ fn home(frame: &mut Frame, app: &App) {
                 .bg(Color::Rgb(210, 225, 245))
                 .bold(),
         ),
-        Span::raw("     "),
+        Span::raw("   "),
         Span::styled(
             "  [0]  WISH ×10  ",
             Style::new().fg(Color::Rgb(35, 24, 5)).bg(GOLD).bold(),
         ),
-        Span::raw("     "),
+        Span::raw("   "),
         Span::styled(
             " [H] HISTORY ",
             Style::new().fg(Color::White).bg(Color::Rgb(45, 52, 76)),
+        ),
+        Span::raw("   "),
+        Span::styled(
+            " [I] INVENTORY ",
+            Style::new().fg(Color::White).bg(Color::Rgb(40, 75, 72)),
         ),
     ]);
     frame.render_widget(
@@ -281,12 +366,15 @@ fn flight(frame: &mut Frame, elapsed: f32, results: &[WishResult]) {
             Rarity::Five => 5,
         })
         .unwrap_or(Rarity::Three);
-    // Keep every flight visually identical at first. The true rarity only bleeds
-    // into the trail during the final beat, just before the reveal flash.
     let mystery_color = Color::Rgb(195, 225, 255);
     let rarity_color = rarity_color(rarity);
-    let reveal_blend = smoothstep(0.60, 0.88, progress);
-    let color = mix_f32(mystery_color, rarity_color, reveal_blend);
+    // A brief purple false glint appears before the real color settles. Even a
+    // blue pull can look promising for a moment, while the actual rarity starts
+    // bleeding through early enough to invite second-guessing.
+    let decoy = (1.0 - ((progress - 0.33) / 0.16).abs()).clamp(0.0, 1.0) * 0.24;
+    let teased_color = mix_f32(mystery_color, PURPLE, decoy);
+    let reveal_blend = smoothstep(0.42, 0.86, progress);
+    let color = mix_f32(teased_color, rarity_color, reveal_blend);
     frame.render_widget(
         Starfield {
             time: elapsed,
@@ -318,9 +406,19 @@ fn flight(frame: &mut Frame, elapsed: f32, results: &[WishResult]) {
     }
     if star_x < area.right() && star_y < area.bottom() {
         buffer[(star_x, star_y)]
-            .set_symbol(if progress > 0.78 { "✹" } else { "✦" })
+            .set_symbol("✹")
             .set_fg(color)
             .set_style(Style::new().add_modifier(Modifier::BOLD));
+        for (x, y, symbol) in [
+            (star_x.saturating_sub(1), star_y, "━"),
+            (star_x.saturating_add(1), star_y, "━"),
+            (star_x, star_y.saturating_sub(1), "✦"),
+            (star_x, star_y.saturating_add(1), "✦"),
+        ] {
+            if x >= area.left() && x < area.right() && y >= area.top() && y < area.bottom() {
+                buffer[(x, y)].set_symbol(symbol).set_fg(color);
+            }
+        }
     }
 
     if progress > 0.86 {
@@ -351,7 +449,14 @@ fn flight(frame: &mut Frame, elapsed: f32, results: &[WishResult]) {
     }
 }
 
-fn reveal(frame: &mut Frame, elapsed: f32, result: &WishResult, index: usize, total: usize) {
+fn reveal(
+    frame: &mut Frame,
+    elapsed: f32,
+    result: &WishResult,
+    index: usize,
+    total: usize,
+    gallery: &CharacterGallery,
+) {
     let area = frame.area();
     let t = (elapsed / 1.05).clamp(0.0, 1.0);
     let color = rarity_color(result.rarity);
@@ -367,8 +472,8 @@ fn reveal(frame: &mut Frame, elapsed: f32, result: &WishResult, index: usize, to
         area,
     );
 
-    let width = 56.min(area.width - 8);
-    let height = 16.min(area.height - 4);
+    let width = 72.min(area.width - 8);
+    let height = 36.min(area.height - 4);
     let card = centered(area, width, height);
     frame.render_widget(Clear, card);
     let border = if t < 0.12 { Color::White } else { color };
@@ -387,21 +492,42 @@ fn reveal(frame: &mut Frame, elapsed: f32, result: &WishResult, index: usize, to
         vertical: 1,
     });
     let [sprite_area, label_area] =
-        Layout::vertical([Constraint::Length(7), Constraint::Min(4)]).areas(inner);
-    frame.render_widget(
-        Paragraph::new(
-            item_sprite(result)
-                .iter()
-                .map(|line| Line::from(*line).style(Style::new().fg(color).bold()))
-                .collect::<Vec<_>>(),
-        )
-        .centered(),
-        sprite_area,
+        Layout::vertical([Constraint::Min(8), Constraint::Length(6)]).areas(inner);
+    if result.item.kind == "Character" {
+        if let Some(portrait) = gallery.get(result.item.name) {
+            frame.render_widget(TerminalPortrait::new(&portrait.reveal), sprite_area);
+        }
+    } else {
+        frame.render_widget(
+            Paragraph::new(
+                item_sprite(result)
+                    .iter()
+                    .map(|line| Line::from(*line).style(Style::new().fg(color).bold()))
+                    .collect::<Vec<_>>(),
+            )
+            .centered(),
+            sprite_area,
+        );
+    }
+
+    let star_interval = 0.24;
+    let shown_stars = ((elapsed - 0.18) / star_interval)
+        .ceil()
+        .clamp(0.0, result.rarity.value() as f32) as usize;
+    let color_start = 0.18 + result.rarity.value() as f32 * star_interval;
+    let star_color = mix_f32(
+        Color::White,
+        color,
+        smoothstep(color_start, color_start + 0.5, elapsed),
     );
+    let star_top = "╲│╱  ".repeat(shown_stars);
+    let star_mid = "─★─  ".repeat(shown_stars);
+    let star_bottom = "╱│╲  ".repeat(shown_stars);
     let mut lines = vec![
         Line::from(result.item.name).style(Style::new().fg(Color::White).bold()),
-        Line::from(result.item.kind).fg(DIM),
-        Line::from(result.rarity.stars()).style(Style::new().fg(color).bold()),
+        Line::from(star_top).style(Style::new().fg(star_color).bold()),
+        Line::from(star_mid).style(Style::new().fg(star_color).bold()),
+        Line::from(star_bottom).style(Style::new().fg(star_color).bold()),
     ];
     if result.featured {
         lines.push(Line::from("✦  FEATURED  ✦").style(Style::new().fg(GOLD).bold()));
@@ -436,17 +562,28 @@ fn five_star_intro(frame: &mut Frame, elapsed: f32, total: usize, index: usize) 
     );
 
     let star_area = centered(area, area.width.min(64), 7);
-    let mut stars = Vec::new();
+    let mut star_top = Vec::new();
+    let mut star_middle = Vec::new();
+    let mut star_bottom = Vec::new();
     for number in 0..5 {
         let birth = 0.14 + number as f32 * 0.12;
         let glow = smoothstep(birth, birth + 0.13, progress);
         let color = mix_f32(Color::Rgb(25, 25, 45), GOLD, glow);
-        stars.push(Span::styled(
-            if glow > 0.82 { "★" } else { "✦" },
-            Style::new().fg(color).bold(),
+        let style = Style::new().fg(color).bold();
+        star_top.push(Span::styled(" ╲│╱ ", style));
+        star_middle.push(Span::styled(
+            if glow > 0.82 {
+                " ─★─ "
+            } else {
+                " ─✦─ "
+            },
+            style,
         ));
+        star_bottom.push(Span::styled(" ╱│╲ ", style));
         if number < 4 {
-            stars.push(Span::raw("     "));
+            star_top.push(Span::raw("   "));
+            star_middle.push(Span::raw("   "));
+            star_bottom.push(Span::raw("   "));
         }
     }
     let omen = if progress < 0.68 {
@@ -465,8 +602,9 @@ fn five_star_intro(frame: &mut Frame, elapsed: f32, total: usize, index: usize) 
             })
             .fg(Color::Rgb(115, 105, 145)),
             Line::from(""),
-            Line::from(stars),
-            Line::from(""),
+            Line::from(star_top),
+            Line::from(star_middle),
+            Line::from(star_bottom),
             Line::from(omen).style(Style::new().fg(GOLD).bold()),
         ])
         .centered(),
@@ -493,6 +631,7 @@ fn five_star_intro(frame: &mut Frame, elapsed: f32, total: usize, index: usize) 
     );
 }
 
+#[allow(dead_code)]
 fn render_banner_art(frame: &mut Frame, area: Rect, banner: Banner) {
     let character = match banner {
         Banner::Astraea => Some("Astraea, Starbound"),
@@ -533,6 +672,7 @@ fn render_banner_art(frame: &mut Frame, area: Rect, banner: Banner) {
     frame.render_widget(Paragraph::new(lines).centered(), area);
 }
 
+#[allow(dead_code)]
 fn render_halfblock_sprite(frame: &mut Frame, area: Rect, sprite: &PixelSprite) {
     let color_for = |pixel| match pixel {
         'K' => Some(sprite.outline),
@@ -664,7 +804,12 @@ fn summary(frame: &mut Frame, results: &[WishResult], selected: usize) {
     );
 }
 
-fn detail(frame: &mut Frame, result: &WishResult) {
+fn detail(
+    frame: &mut Frame,
+    result: &WishResult,
+    inventory_count: Option<u32>,
+    gallery: &CharacterGallery,
+) {
     let area = frame.area();
     let profile = item_profile(result);
     frame.render_widget(
@@ -675,7 +820,7 @@ fn detail(frame: &mut Frame, result: &WishResult) {
         area,
     );
 
-    let panel = centered(area, area.width.min(104), area.height.min(32));
+    let panel = centered(area, area.width.min(112), area.height.min(38));
     frame.render_widget(Clear, panel);
     let border_color = if result.item.kind == "Character" {
         profile.color
@@ -716,19 +861,19 @@ fn detail(frame: &mut Frame, result: &WishResult) {
             .border_style(Style::new().fg(Color::Rgb(38, 50, 80))),
         art_area,
     );
-    if let Some(sprite) = character_sprite(result.item.name) {
-        render_hd_sprite(frame, art_inner, &sprite);
+    if result.item.kind == "Character" {
+        if let Some(portrait) = gallery.get(result.item.name) {
+            frame.render_widget(TerminalPortrait::new(&portrait.detail), art_inner);
+        }
     } else {
-        let art_lines: Vec<Line> = profile
-            .art
+        let art_lines: Vec<Line> = item_sprite(result)
             .iter()
             .enumerate()
             .map(|(index, line)| {
-                let color = match index % 4 {
+                let color = match index % 3 {
                     0 => profile.color,
                     1 => Color::White,
-                    2 => profile.accent,
-                    _ => mix_f32(profile.color, Color::White, 0.38),
+                    _ => profile.accent,
                 };
                 Line::from(*line).style(Style::new().fg(color).bold())
             })
@@ -766,7 +911,11 @@ fn detail(frame: &mut Frame, result: &WishResult) {
         Line::from(""),
         Line::from(format!("“{}”", profile.quote)).style(Style::new().fg(profile.accent).italic()),
         Line::from(""),
-        Line::from(format!("Obtained on wish #{}", result.wish_number)).fg(DIM),
+        Line::from(inventory_count.map_or_else(
+            || format!("Obtained on wish #{}", result.wish_number),
+            |count| format!("Owned: {count}"),
+        ))
+        .fg(DIM),
     ]);
     frame.render_widget(
         Paragraph::new(info)
@@ -774,11 +923,191 @@ fn detail(frame: &mut Frame, result: &WishResult) {
             .block(Block::new().padding(Padding::uniform(1))),
         info_area,
     );
+    let return_label = if inventory_count.is_some() {
+        "return to inventory"
+    } else {
+        "return to results"
+    };
     frame.render_widget(
-        Paragraph::new("ESC / ENTER  return to results  •  Q quit")
+        Paragraph::new(format!("ESC / ENTER  {return_label}  •  Q quit"))
             .centered()
             .fg(DIM),
         Rect::new(area.x, area.bottom() - 2, area.width, 1),
+    );
+}
+
+fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<String>) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 1.0,
+            intensity: 0.55,
+        },
+        area,
+    );
+    let panel = centered(area, area.width.min(94), area.height.min(34));
+    let [header, list, footer] = Layout::vertical([
+        Constraint::Length(4),
+        Constraint::Min(8),
+        Constraint::Length(4),
+    ])
+    .areas(panel.inner(ratatui::layout::Margin {
+        horizontal: 2,
+        vertical: 1,
+    }));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(Color::Rgb(80, 205, 185)))
+            .bg(Color::Rgb(7, 12, 25))
+            .title(" INVENTORY ")
+            .title_alignment(Alignment::Center),
+        panel,
+    );
+    frame.render_widget(
+        Paragraph::new(vec![
+            Line::from(format!(
+                "{} unique items  •  {} selected",
+                app.save.inventory.len(),
+                selected.len()
+            ))
+            .style(Style::new().fg(Color::White).bold()),
+            Line::from("Keep what matters. The Archive remembers everything else.")
+                .italic()
+                .fg(DIM),
+        ])
+        .centered(),
+        header,
+    );
+
+    if app.save.inventory.is_empty() {
+        frame.render_widget(
+            Paragraph::new("Inventory is empty.\n\nPress ESC to return.")
+                .centered()
+                .fg(DIM),
+            list,
+        );
+    } else {
+        let visible = list.height as usize;
+        let start = cursor.saturating_sub(visible.saturating_sub(1));
+        let lines = app
+            .save
+            .inventory
+            .iter()
+            .enumerate()
+            .skip(start)
+            .take(visible)
+            .map(|(index, (name, count))| {
+                let item = catalog_item(name);
+                let focused = index == cursor;
+                let checked = if selected.contains(name) {
+                    "[×]"
+                } else {
+                    "[ ]"
+                };
+                let rarity = item.map_or("???", |item| item.rarity.stars());
+                let kind = item.map_or("Unknown", |item| item.kind);
+                let marker = if focused { "›" } else { " " };
+                let style = if focused {
+                    Style::new().fg(Color::Rgb(15, 24, 35)).bg(GOLD).bold()
+                } else if selected.contains(name) {
+                    Style::new().fg(Color::Rgb(105, 235, 205))
+                } else {
+                    Style::new().fg(Color::Rgb(205, 215, 235))
+                };
+                Line::from(format!(
+                    "{marker} {checked}  {name:<30} {kind:<10} {rarity:<5}  ×{count}"
+                ))
+                .style(style)
+            })
+            .collect::<Vec<_>>();
+        frame.render_widget(Paragraph::new(lines), list);
+    }
+    frame.render_widget(
+        Paragraph::new(vec![
+            Line::from("↑/↓ move  •  SPACE select  •  A select all  •  ENTER inspect")
+                .fg(Color::Rgb(180, 195, 220)),
+            Line::from("D delete selection/item  •  Shift+D delete all  •  ESC return").fg(DIM),
+        ])
+        .centered()
+        .block(
+            Block::new()
+                .borders(Borders::TOP)
+                .border_style(Style::new().fg(Color::Rgb(38, 60, 78))),
+        ),
+        footer,
+    );
+}
+
+fn confirm_inventory_delete(frame: &mut Frame, targets: &[String]) {
+    let area = frame.area();
+    let dialog = centered(area, area.width.min(62), 10);
+    frame.render_widget(Clear, dialog);
+    let subject = if targets.len() == 1 {
+        targets[0].clone()
+    } else {
+        format!("{} selected inventory entries", targets.len())
+    };
+    frame.render_widget(
+        Paragraph::new(vec![
+            Line::from("DELETE FROM INVENTORY?")
+                .style(Style::new().fg(Color::Rgb(255, 105, 95)).bold()),
+            Line::from(""),
+            Line::from(subject).style(Style::new().fg(Color::White).bold()),
+            Line::from("Pity and wish history are preserved.").fg(DIM),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled(
+                    " [Y] DELETE ",
+                    Style::new()
+                        .fg(Color::White)
+                        .bg(Color::Rgb(150, 40, 45))
+                        .bold(),
+                ),
+                Span::raw("     "),
+                Span::styled(
+                    " [N] CANCEL ",
+                    Style::new().fg(Color::White).bg(Color::Rgb(45, 65, 80)),
+                ),
+            ]),
+        ])
+        .centered()
+        .block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .border_style(Style::new().fg(Color::Rgb(255, 95, 85)))
+                .bg(Color::Rgb(18, 8, 15))
+                .padding(Padding::uniform(1)),
+        ),
+        dialog,
+    );
+}
+
+fn confirm_quit(frame: &mut Frame) {
+    let area = frame.area();
+    let dialog = centered(area, area.width.min(54), 9);
+    frame.render_widget(Clear, dialog);
+    frame.render_widget(
+        Paragraph::new(vec![
+            Line::from("EXIT WISHSIM?").style(Style::new().fg(GOLD).bold()),
+            Line::from(""),
+            Line::from("Your progress is already saved.").fg(DIM),
+            Line::from(""),
+            Line::from("Press Y or ENTER to exit").style(Style::new().fg(Color::White).bold()),
+            Line::from("Press N or ESC to return to the game").fg(Color::Rgb(180, 195, 220)),
+        ])
+        .centered()
+        .block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .border_style(Style::new().fg(GOLD))
+                .bg(Color::Rgb(12, 10, 22))
+                .padding(Padding::uniform(1)),
+        ),
+        dialog,
     );
 }
 
@@ -824,6 +1153,57 @@ fn history(frame: &mut Frame, app: &App) {
         Paragraph::new("ESC return  •  Q quit").centered().fg(DIM),
         Rect::new(area.x, area.bottom() - 2, area.width, 1),
     );
+}
+
+struct TerminalPortrait<'a> {
+    raster: &'a TerminalRaster,
+}
+
+impl<'a> TerminalPortrait<'a> {
+    const fn new(raster: &'a TerminalRaster) -> Self {
+        Self { raster }
+    }
+}
+
+impl Widget for TerminalPortrait<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let image_height = self.raster.height.div_ceil(2);
+        let visible_width = self.raster.width.min(area.width);
+        let visible_height = image_height.min(area.height);
+        let origin_x = area.x + area.width.saturating_sub(visible_width) / 2;
+        let origin_y = area.y + area.height.saturating_sub(visible_height) / 2;
+
+        for cell_y in 0..visible_height {
+            for x in 0..visible_width {
+                let top = self.raster.pixel(x, cell_y * 2);
+                let bottom_y = cell_y * 2 + 1;
+                let bottom = if bottom_y < self.raster.height {
+                    self.raster.pixel(x, bottom_y)
+                } else {
+                    [0, 0, 0, 0]
+                };
+                let top_visible = top[3] > 40;
+                let bottom_visible = bottom[3] > 40;
+                let cell = &mut buf[(origin_x + x, origin_y + cell_y)];
+                match (top_visible, bottom_visible) {
+                    (true, true) => {
+                        cell.set_symbol("▀")
+                            .set_fg(Color::Rgb(top[0], top[1], top[2]))
+                            .set_bg(Color::Rgb(bottom[0], bottom[1], bottom[2]));
+                    }
+                    (true, false) => {
+                        cell.set_symbol("▀")
+                            .set_fg(Color::Rgb(top[0], top[1], top[2]));
+                    }
+                    (false, true) => {
+                        cell.set_symbol("▄")
+                            .set_fg(Color::Rgb(bottom[0], bottom[1], bottom[2]));
+                    }
+                    (false, false) => {}
+                }
+            }
+        }
+    }
 }
 
 struct Starfield {
@@ -1021,6 +1401,7 @@ fn item_sprite(result: &WishResult) -> &'static [&'static str] {
     }
 }
 
+#[allow(dead_code)]
 struct PixelSprite {
     pixels: &'static [&'static str],
     outline: Color,
@@ -1030,6 +1411,7 @@ struct PixelSprite {
     element: Color,
 }
 
+#[allow(dead_code)]
 fn render_hd_sprite(frame: &mut Frame, area: Rect, sprite: &PixelSprite) {
     // Each authored pixel becomes a shaded 2x2 cluster. Highlights, midtones,
     // shadows, and elemental bloom give the inspection portrait a denser
@@ -1072,6 +1454,7 @@ fn render_hd_sprite(frame: &mut Frame, area: Rect, sprite: &PixelSprite) {
     frame.render_widget(Paragraph::new(lines).alignment(Alignment::Center), area);
 }
 
+#[allow(dead_code)]
 fn shade(color: Color, amount: f32) -> Color {
     let Color::Rgb(r, g, b) = color else {
         return color;
@@ -1089,6 +1472,7 @@ fn shade(color: Color, amount: f32) -> Color {
     Color::Rgb(channel(r), channel(g), channel(b))
 }
 
+#[allow(dead_code)]
 fn character_sprite(name: &str) -> Option<PixelSprite> {
     let black = Color::Rgb(25, 25, 40);
     let skin = Color::Rgb(255, 205, 175);
@@ -1266,6 +1650,7 @@ fn character_sprite(name: &str) -> Option<PixelSprite> {
     Some(sprite)
 }
 
+#[allow(dead_code)]
 struct ItemProfile {
     title: &'static str,
     element: &'static str,
@@ -1519,9 +1904,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn rarity_color_stays_hidden_until_late_in_flight() {
-        assert_eq!(smoothstep(0.60, 0.88, 0.50), 0.0);
-        assert_eq!(smoothstep(0.60, 0.88, 0.95), 1.0);
-        assert!(smoothstep(0.60, 0.88, 0.74) > 0.4);
+    fn rarity_color_teases_early_but_settles_late() {
+        assert_eq!(smoothstep(0.42, 0.86, 0.30), 0.0);
+        assert_eq!(smoothstep(0.42, 0.86, 0.95), 1.0);
+        assert!(smoothstep(0.42, 0.86, 0.55) > 0.1);
+        assert!(smoothstep(0.42, 0.86, 0.75) < 0.9);
+    }
+
+    #[test]
+    fn terminal_portrait_writes_colored_cells() {
+        let raster = TerminalRaster {
+            width: 1,
+            height: 2,
+            pixels: vec![[255, 0, 0, 255], [0, 0, 255, 255]],
+        };
+        let area = Rect::new(0, 0, 1, 1);
+        let mut buffer = Buffer::empty(area);
+        TerminalPortrait::new(&raster).render(area, &mut buffer);
+        assert_eq!(buffer[(0, 0)].symbol(), "▀");
+        assert_eq!(buffer[(0, 0)].fg, Color::Rgb(255, 0, 0));
+        assert_eq!(buffer[(0, 0)].bg, Color::Rgb(0, 0, 255));
     }
 }

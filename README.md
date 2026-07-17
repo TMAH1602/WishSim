@@ -1,6 +1,6 @@
 # WishSim
 
-A cinematic terminal wish simulator built in Rust with Ratatui and Crossterm. It includes four illustrated banners, animated star flights, five-star cutscenes, compact line-art reveals, shaded HD-2D-style inspection sprites, ten-pull summaries, persistent pity, featured guarantees, history, and deterministic command-line pulls.
+A cinematic terminal wish simulator built in Rust with Ratatui and Crossterm. It includes four banners, animated star flights, five-star cutscenes, original full-color character portraits, inspectable inventory, ten-pull summaries, persistent pity, featured guarantees, history, and deterministic command-line pulls.
 
 WishSim uses original characters, weapons, lore, and artwork. It is an unofficial fan-made terminal game and is not affiliated with or endorsed by HoYoverse.
 
@@ -37,6 +37,7 @@ The interactive controls are shown on screen:
 - `←` / `→` on the home screen: change banners
 - `P` on the weapon banner: change the epitomized path (resets Fate)
 - `H`: history
+- `I`: inventory
 - `Space` or `Enter`: advance/skip an animation
 - `S`: skip every remaining reveal in a ten-pull
 - `←` / `→`: select a result in the summary
@@ -44,7 +45,19 @@ The interactive controls are shown on screen:
 - `Esc`: return from an inspection screen
 - `Q`: quit
 
-Kitty is detected automatically. The interface uses true color and dense Unicode effects in Kitty while retaining a portable ANSI terminal path.
+### Inventory controls
+
+- `↑` / `↓`: move through owned items
+- `Space`: toggle the focused item for multi-selection
+- `A`: select or deselect every inventory entry
+- `Enter`: inspect the focused character or weapon
+- `D`: delete the selection, or the focused item when nothing is selected
+- `Shift+D`: request deletion of the entire inventory
+- `Y` / `N`: confirm or cancel deletion
+
+Inventory deletion never changes pity or wish history. Every deletion, including individual and batch deletion, requires confirmation.
+
+Kitty is detected automatically. Character portraits use Kitty's graphics protocol when available and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder is needed beside a release binary.
 
 ## CLI mode
 

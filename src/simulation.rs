@@ -136,6 +136,18 @@ pub fn featured_character(banner: Banner) -> Item {
     }
 }
 
+pub fn catalog_item(name: &str) -> Option<Item> {
+    [ASTRAEA, KAELIS, SERAPHINE, POLARIS_EDGE, NOVA_GRIMOIRE]
+        .into_iter()
+        .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
+        .chain(STANDARD_FIVE_WEAPONS.iter().copied())
+        .chain(FEATURED_FOUR.iter().copied())
+        .chain(FEATURED_FOUR_WEAPONS.iter().copied())
+        .chain(STANDARD_FOUR.iter().copied())
+        .chain(THREE_STAR.iter().copied())
+        .find(|item| item.name == name)
+}
+
 pub struct WishEngine {
     rng: ChaCha8Rng,
 }

@@ -10,6 +10,14 @@ pub enum Rarity {
 }
 
 impl Rarity {
+    pub const fn value(self) -> u8 {
+        match self {
+            Self::Three => 3,
+            Self::Four => 4,
+            Self::Five => 5,
+        }
+    }
+
     pub const fn stars(self) -> &'static str {
         match self {
             Self::Three => "★★★",

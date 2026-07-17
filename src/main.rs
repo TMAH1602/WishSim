@@ -1,4 +1,6 @@
 mod app;
+mod art;
+mod kitty;
 mod model;
 mod simulation;
 mod storage;
