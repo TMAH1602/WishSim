@@ -1,0 +1,90 @@
+# WishSim
+
+A cinematic terminal wish simulator built in Rust with Ratatui and Crossterm. It includes four illustrated banners, animated star flights, five-star cutscenes, compact line-art reveals, shaded HD-2D-style inspection sprites, ten-pull summaries, persistent pity, featured guarantees, history, and deterministic command-line pulls.
+
+WishSim uses original characters, weapons, lore, and artwork. It is an unofficial fan-made terminal game and is not affiliated with or endorsed by HoYoverse.
+
+## Install a release
+
+Download the archive for your system from the [latest GitHub release](../../releases/latest):
+
+- `wishsim-macos-arm64` for Apple Silicon Macs
+- `wishsim-macos-x86_64` for Intel Macs
+- `wishsim-linux-x86_64` for 64-bit Linux
+- `wishsim-windows-x86_64` for 64-bit Windows
+
+On macOS or Linux, extract the archive and run:
+
+```sh
+chmod +x wishsim
+./wishsim
+```
+
+On Windows, extract the ZIP and launch `wishsim.exe` from Windows Terminal. Kitty provides the richest presentation, but any modern true-color terminal should work.
+
+The included banner and item names are original. The probability model is inspired by familiar character-event wish systems: 0.6% base five-star rate, soft pity after pull 73, hard pity at 90, four-star-or-better within 10, and featured guarantees after losing a 50/50.
+
+## Run it
+
+```sh
+cargo run --release
+```
+
+The interactive controls are shown on screen:
+
+- `1` or `Enter`: one wish
+- `0`: ten wishes
+- `←` / `→` on the home screen: change banners
+- `P` on the weapon banner: change the epitomized path (resets Fate)
+- `H`: history
+- `Space` or `Enter`: advance/skip an animation
+- `S`: skip every remaining reveal in a ten-pull
+- `←` / `→`: select a result in the summary
+- `Enter`: inspect the selected character or weapon
+- `Esc`: return from an inspection screen
+- `Q`: quit
+
+Kitty is detected automatically. The interface uses true color and dense Unicode effects in Kitty while retaining a portable ANSI terminal path.
+
+## CLI mode
+
+```sh
+cargo run -- pull --count 10
+cargo run -- pull --count 10 --seed 42
+cargo run -- pull --count 10 --banner kaelis
+cargo run -- pull --count 10 --banner seraphine
+cargo run -- pull --count 10 --banner weapon
+cargo run -- stats
+cargo run -- reset
+```
+
+Seeded pulls are reproducible and deliberately do not modify the save file.
+
+The three character-event banners share pity and featured guarantees. The weapon banner has its own 80-pull hard pity, a 75% featured check, two featured weapons, and a one-point epitomized path: missing the selected weapon grants one Fate Point, making the next five-star the selected weapon. This is an original, simplified system inspired by modern weapon-banner mechanics.
+
+## Learn the code
+
+Start in [`src/model.rs`](src/model.rs) for Rust structs and enums, then read [`src/simulation.rs`](src/simulation.rs) for state mutation and tests. [`src/app.rs`](src/app.rs) is the event-driven state machine, and [`src/ui.rs`](src/ui.rs) contains the Ratatui rendering and animation work.
+
+Run the quality checks with:
+
+```sh
+cargo fmt --all -- --check
+cargo test
+cargo clippy --all-targets -- -D warnings
+```
+
+## Publishing a release
+
+Releases are built automatically for macOS, Linux, and Windows. Update the version in `Cargo.toml`, commit the change, then push a matching tag:
+
+```sh
+git tag v0.1.0
+git push origin main --tags
+```
+
+The release workflow creates the GitHub release, builds all four archives, and attaches them for download.
+
+## License
+
+WishSim is available under the [MIT License](LICENSE).

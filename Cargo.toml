@@ -1,0 +1,21 @@
+[package]
+name = "wishsim"
+version = "0.1.0"
+edition = "2024"
+description = "A cinematic terminal wish simulator with animated reveals and JRPG-style art"
+license = "MIT"
+readme = "README.md"
+keywords = ["terminal", "tui", "game", "ratatui", "simulator"]
+categories = ["command-line-utilities", "games"]
+
+[dependencies]
+clap = { version = "4.6.2", features = ["derive"] }
+color-eyre = "0.6.5"
+crossterm = "0.29.0"
+directories = "6.0.0"
+rand = "0.10.2"
+rand_chacha = "0.10.0"
+ratatui = "0.30.2"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+unicode-width = "0.2.2"
