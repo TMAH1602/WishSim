@@ -21,6 +21,8 @@ enum BannerArg {
     Astraea,
     Kaelis,
     Seraphine,
+    Vaughn,
+    Steven,
     Weapon,
 }
 
@@ -30,6 +32,8 @@ impl From<BannerArg> for Banner {
             BannerArg::Astraea => Self::Astraea,
             BannerArg::Kaelis => Self::Kaelis,
             BannerArg::Seraphine => Self::Seraphine,
+            BannerArg::Vaughn => Self::Vaughn,
+            BannerArg::Steven => Self::Steven,
             BannerArg::Weapon => Self::Weapon,
         }
     }

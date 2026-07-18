@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, time::Instant};
 
 use crate::{
-    app::{App, Phase},
+    app::{App, ELEMENT_FILTERS, Phase},
     art::{CharacterGallery, TerminalRaster},
     model::{Banner, Rarity, WishResult},
     simulation::catalog_item,
@@ -202,6 +202,18 @@ fn home(frame: &mut Frame, app: &App) {
             "VERDANT ORACLE  •  DREAMWOOD SEER",
             "The smallest seed dreams of becoming a forest.",
             Color::Rgb(105, 220, 105),
+        ),
+        Banner::Vaughn => (
+            "V A U G H N",
+            "VIOLET OATH  •  STORMBOUND KNIGHT",
+            "Behind iron, even thunder learns to kneel.",
+            Color::Rgb(170, 95, 255),
+        ),
+        Banner::Steven => (
+            "S T E V E N",
+            "AZURE SHADE  •  VEILFIRE SHINOBI",
+            "By the time the flame is seen, the shadow has already moved.",
+            Color::Rgb(65, 155, 255),
         ),
         Banner::Weapon => (
             "I N C A R N A T E   A R M A M E N T S",
@@ -637,6 +649,8 @@ fn render_banner_art(frame: &mut Frame, area: Rect, banner: Banner) {
         Banner::Astraea => Some("Astraea, Starbound"),
         Banner::Kaelis => Some("Kaelis, Ashen Vanguard"),
         Banner::Seraphine => Some("Seraphine, Verdant Oracle"),
+        Banner::Vaughn => Some("Vaughn, Violet Oath"),
+        Banner::Steven => Some("Steven, Azure Shade"),
         Banner::Weapon => None,
     };
     if let Some(sprite) = character.and_then(character_sprite) {
@@ -895,7 +909,7 @@ fn detail(
         Line::from(""),
         Line::from(vec![
             "ELEMENT  ".fg(DIM),
-            profile.element.fg(profile.color).bold(),
+            result.item.element().fg(profile.color).bold(),
         ]),
         Line::from(vec![
             "WEAPON   ".fg(DIM),
@@ -905,6 +919,36 @@ fn detail(
             "RARITY   ".fg(DIM),
             result.rarity.stars().fg(rarity_color(result.rarity)).bold(),
         ]),
+        Line::from(""),
+        Line::from("COMBAT PROFILE").style(Style::new().fg(GOLD).bold()),
+        stat_line(
+            &[
+                ("ATK", result.item.stats().atk),
+                ("DEF", result.item.stats().def),
+            ],
+            border_color,
+        ),
+        stat_line(
+            &[
+                ("HP", result.item.stats().hp),
+                ("SPD", result.item.stats().spd),
+            ],
+            border_color,
+        ),
+        stat_line(
+            &[
+                ("CRIT RATE", result.item.stats().crit_rate),
+                ("CRIT DMG", result.item.stats().crit_dmg),
+            ],
+            border_color,
+        ),
+        stat_line(
+            &[
+                ("ELEMENTAL ATK", result.item.stats().elemental_atk),
+                ("POISE", result.item.stats().poise),
+            ],
+            border_color,
+        ),
         Line::from(""),
         Line::from("ARCHIVE LORE").style(Style::new().fg(GOLD).bold()),
         Line::from(profile.lore).fg(Color::Rgb(185, 195, 220)),
@@ -934,6 +978,21 @@ fn detail(
             .fg(DIM),
         Rect::new(area.x, area.bottom() - 2, area.width, 1),
     );
+}
+
+fn stat_line(stats: &[(&str, u16)], color: Color) -> Line<'static> {
+    let mut spans = Vec::new();
+    for (index, (label, value)) in stats.iter().enumerate() {
+        if index > 0 {
+            spans.push(Span::raw("   "));
+        }
+        spans.push(Span::styled(format!("{label} "), Style::new().fg(DIM)));
+        spans.push(Span::styled(
+            value.to_string(),
+            Style::new().fg(color).bold(),
+        ));
+    }
+    Line::from(spans)
 }
 
 fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<String>) {
@@ -968,7 +1027,8 @@ fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<St
     frame.render_widget(
         Paragraph::new(vec![
             Line::from(format!(
-                "{} unique items  •  {} selected",
+                "{} shown  •  {} unique items  •  {} selected",
+                app.inventory_names().len(),
                 app.save.inventory.len(),
                 selected.len()
             ))
@@ -981,7 +1041,8 @@ fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<St
         header,
     );
 
-    if app.save.inventory.is_empty() {
+    let inventory_names = app.inventory_names();
+    if inventory_names.is_empty() {
         frame.render_widget(
             Paragraph::new("Inventory is empty.\n\nPress ESC to return.")
                 .centered()
@@ -991,14 +1052,13 @@ fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<St
     } else {
         let visible = list.height as usize;
         let start = cursor.saturating_sub(visible.saturating_sub(1));
-        let lines = app
-            .save
-            .inventory
+        let lines = inventory_names
             .iter()
             .enumerate()
             .skip(start)
             .take(visible)
-            .map(|(index, (name, count))| {
+            .map(|(index, name)| {
+                let count = app.save.inventory.get(name).copied().unwrap_or(0);
                 let item = catalog_item(name);
                 let focused = index == cursor;
                 let checked = if selected.contains(name) {
@@ -1017,7 +1077,7 @@ fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<St
                     Style::new().fg(Color::Rgb(205, 215, 235))
                 };
                 Line::from(format!(
-                    "{marker} {checked}  {name:<30} {kind:<10} {rarity:<5}  ×{count}"
+                    "{marker} {checked}  {name:<27} {kind:<10} {rarity:<5} ×{count}"
                 ))
                 .style(style)
             })
@@ -1026,9 +1086,17 @@ fn inventory(frame: &mut Frame, app: &App, cursor: usize, selected: &BTreeSet<St
     }
     frame.render_widget(
         Paragraph::new(vec![
-            Line::from("↑/↓ move  •  SPACE select  •  A select all  •  ENTER inspect")
-                .fg(Color::Rgb(180, 195, 220)),
-            Line::from("D delete selection/item  •  Shift+D delete all  •  ESC return").fg(DIM),
+            Line::from(vec![
+                Span::styled(" [S] SORT ", Style::new().fg(Color::Rgb(10, 20, 32)).bg(GOLD).bold()),
+                Span::styled(format!(" {} ", app.inventory_sort.label()), Style::new().fg(GOLD)),
+                Span::raw("  "),
+                Span::styled(" [F] TYPE ", Style::new().fg(Color::Rgb(8, 25, 26)).bg(Color::Rgb(80, 205, 185)).bold()),
+                Span::styled(format!(" {} ", app.inventory_kind.label()), Style::new().fg(Color::Rgb(105, 235, 205))),
+                Span::raw("  "),
+                Span::styled(" [E] ELEMENT ", Style::new().fg(Color::Rgb(15, 15, 32)).bg(PURPLE).bold()),
+                Span::styled(format!(" {} ", ELEMENT_FILTERS[app.inventory_element]), Style::new().fg(PURPLE)),
+            ]),
+            Line::from("↑/↓ move  •  SPACE select  •  A select all  •  ENTER inspect  •  D delete  •  ESC return").fg(DIM),
         ])
         .centered()
         .block(
@@ -1389,6 +1457,27 @@ fn item_sprite(result: &WishResult) -> &'static [&'static str] {
                 "    ║║      ",
                 "  ──╬╬──    ",
                 "     ╨      ",
+            ],
+            "Gauntlet" => &[
+                "   ╔════╗   ",
+                " ╔═╬████╬═╗ ",
+                " ║ ██████ ║ ",
+                " ╚═██████═╝ ",
+                "   ╚╦══╦╝   ",
+            ],
+            "Scythe" => &[
+                "   ╭────◆   ",
+                " ╭─╯   ╱    ",
+                "◆╯    ╱     ",
+                "     ╱      ",
+                "    ╵       ",
+            ],
+            "Dual Blades" => &[
+                "  ◆     ◆   ",
+                "  ║     ║   ",
+                "──╬── ──╬── ",
+                "  ║     ║   ",
+                "  †     †   ",
             ],
             _ => &[
                 "            ",
@@ -1810,6 +1899,137 @@ fn item_profile(result: &WishResult) -> ItemProfile {
                 "      ╱  ╲        ◇",
             ],
         },
+        "Vaughn, Violet Oath" => ItemProfile {
+            title: "Knight of the Sealed Storm",
+            element: "Electro",
+            weapon: "Claymore",
+            lore: "No living witness has seen the face beneath Vaughn's great helm. He walks where thunder has scarred the earth, carrying an oath too heavy for any ordinary blade.",
+            quote: "The helm is not my prison. It is my promise.",
+            color: Color::Rgb(155, 75, 255),
+            accent: Color::Rgb(220, 180, 255),
+            art: &[
+                "       ⚡       ",
+                "     ╭███╮     ",
+                "     │ ▬ │     ",
+                "   ╭─╯███╰─╮   ",
+                "   │███████│ ║ ",
+                "   ╰╮█████╭╯ ║ ",
+                "    │█████│ ═╬═",
+                "    ╱█████╲  ║ ",
+                "   ╱ ╱   ╲ ╲ ◆ ",
+            ],
+        },
+        "Steven, Azure Shade" => ItemProfile {
+            title: "Keeper of the Quiet Flame",
+            element: "Pyro",
+            weapon: "Catalyst",
+            lore: "Steven served unseen along the Archive's border roads until Wick chose his shoulder as a throne. Their veilfire burns blue and leaves no ash; one moves like a whisper, while the other strikes with the force of a falling star.",
+            quote: "Stealth is not silence. It is choosing what the enemy hears.",
+            color: Color::Rgb(65, 155, 255),
+            accent: Color::Rgb(145, 225, 255),
+            art: &[
+                "     ≋🔥     🔥≋    ",
+                "       ╭───╮  ᴥ    ",
+                "       │◉ ◉│ ╱■╲   ",
+                "       ╰─▰─╯ ╰─╯   ",
+                "    ≋╲╱│◆│╲╱≋     ",
+                "   🔥  ╱███╲  🔥   ",
+                "      ╱╱███╲╲      ",
+                "       ╱   ╲       ",
+                "      ╱     ╲      ",
+            ],
+        },
+        "Cinder, Forgeheart" => ItemProfile {
+            title: "The Unbroken Furnace",
+            element: "Pyro",
+            weapon: "Gauntlet",
+            lore: "Cinder learned smithing by breaking every tool her masters gave her. Now she tempers armor with her bare hands and meets every impossible fight with a delighted grin.",
+            quote: "If it won't bend, hit it until it remembers how.",
+            color: Color::Rgb(255, 85, 35),
+            accent: GOLD,
+            art: &[
+                "    🔥   🔥     ",
+                "     ╭───╮     ",
+                "   ╔═│•  •│═╗   ",
+                "   ║ ╰─⌣─╯ ║   ",
+                "   █╲╱███╲╱█   ",
+                "   █  ███  █   ",
+                "     ╱███╲     ",
+                "    ╱ ╱ ╲ ╲    ",
+            ],
+        },
+        "Sergei, Winterfang" => ItemProfile {
+            title: "Heir of the White Hunt",
+            element: "Cryo",
+            weapon: "Catalyst",
+            lore: "Sergei carries a splinter of the old winter inside a crystal catalyst beneath his furs. When danger draws near, the guardian called Volkodav rises at his back and shapes that cold into armor, claws, and twin shields.",
+            quote: "The wolf does not chase the storm. It waits where the storm must pass.",
+            color: Color::Rgb(105, 185, 255),
+            accent: Color::Rgb(205, 240, 255),
+            art: &[
+                "      ╱╲___╱╲      ",
+                "   ≋ ╱  ◈ ◈  ╲ ≋   ",
+                "     ╲__︿____╱     ",
+                "       ╭▰▰╮        ",
+                "    ≋══│▰▰│══≋     ",
+                "   ◈╲ ╱╱◇╲╲ ╱◈    ",
+                "   ╰◆╯│❄│╰◆╯     ",
+                "      ╱▰▰╲        ",
+                "     ╱ ╱ ╲ ╲       ",
+                "    ❄       ❄      ",
+            ],
+        },
+        "Zephra" => ItemProfile {
+            title: "Gale-Road Courier",
+            element: "Anemo",
+            weapon: "Gauntlet",
+            lore: "Zephra delivers sealed messages across borders no map admits exist. A fair wind follows her, though it has an unfortunate habit of stealing hats.",
+            quote: "Keep up—the shortcut only lasts one gust!",
+            color: Color::Rgb(75, 220, 195),
+            accent: Color::White,
+            art: &[
+                "   ~  ✦  ~    ",
+                "     ╭───╮     ",
+                "  ≋══│◠ ◠│══≋  ",
+                "     ╰─▽─╯     ",
+                "   ◉╲╱│◇│╲╱◉   ",
+                "     ╱   ╲     ",
+            ],
+        },
+        "Neris" => ItemProfile {
+            title: "Waltzer at Winter's End",
+            element: "Cryo",
+            weapon: "Scythe",
+            lore: "Neris performs the last dance at abandoned winter courts. Each sweep of his scythe preserves one fading memory in flawless ice.",
+            quote: "Even an ending deserves perfect form.",
+            color: Color::Rgb(125, 190, 255),
+            accent: Color::White,
+            art: &[
+                "       ❄  ╭─╮ ",
+                "     ╭───╮│ │ ",
+                "     │◐ ◐│╰╮│ ",
+                "     ╰─︿─╯ ││ ",
+                "      ╱◇╲  ││ ",
+                "     ╱   ╲ ◆╯ ",
+            ],
+        },
+        "Brikka" => ItemProfile {
+            title: "Emberworks Prodigy",
+            element: "Pyro",
+            weapon: "Dual Blades",
+            lore: "Brikka's workshop has exploded seven times and improved after every incident. Her paired furnace blades are equal parts weapon, tool, and very loud argument.",
+            quote: "Safety third. Inspiration first. Snacks second.",
+            color: Color::Rgb(255, 105, 35),
+            accent: GOLD,
+            art: &[
+                "    ⚙  🔥  ⚙    ",
+                "     ╭───╮     ",
+                "     │◠ ◠│     ",
+                "     ╰─▽─╯     ",
+                "  †═╲╱│◇│╲╱═†  ",
+                "     ╱   ╲     ",
+            ],
+        },
         _ => weapon_profile(result),
     }
 }
@@ -1870,6 +2090,47 @@ fn weapon_profile(result: &WishResult) -> ItemProfile {
                 "    ───╬██╬───     ",
                 "       ║  ║        ",
                 "        ╨          ",
+            ],
+        ),
+        "Gauntlet" => (
+            "Unaligned",
+            Color::Rgb(75, 220, 195),
+            GOLD,
+            &[
+                "      ╔════╗      ",
+                "    ╔═╬████╬═╗    ",
+                "    ║ ██████ ║    ",
+                "    ╚═██████═╝    ",
+                "      ╚╦══╦╝      ",
+                "       ║  ║       ",
+                "       ╚══╝       ",
+            ],
+        ),
+        "Scythe" => (
+            "Unaligned",
+            Color::Rgb(125, 190, 255),
+            Color::White,
+            &[
+                "       ╭────◆     ",
+                "    ╭──╯   ╱      ",
+                "  ◆─╯     ╱       ",
+                "         ╱        ",
+                "        ╱         ",
+                "       ╱          ",
+                "      ╵           ",
+            ],
+        ),
+        "Dual Blades" => (
+            "Unaligned",
+            Color::Rgb(255, 105, 35),
+            GOLD,
+            &[
+                "    ◆       ◆     ",
+                "    ║       ║     ",
+                "    ║       ║     ",
+                "  ──╬──   ──╬──   ",
+                "    ║       ║     ",
+                "    †       †     ",
             ],
         ),
         _ => (

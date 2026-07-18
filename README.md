@@ -61,12 +61,17 @@ The interactive controls are shown on screen:
 - `↑` / `↓`: move through owned items
 - `Space`: toggle the focused item for multi-selection
 - `A`: select or deselect every inventory entry
+- `S`: cycle sorting by name, rarity, character/weapon type, or element
+- `F`: filter all items, characters only, or weapons only
+- `E`: cycle elemental filters
 - `Enter`: inspect the focused character or weapon
 - `D`: delete the selection, or the focused item when nothing is selected
 - `Shift+D`: request deletion of the entire inventory
 - `Y` / `N`: confirm or cancel deletion
 
 Inventory deletion never changes pity or wish history. Every deletion, including individual and batch deletion, requires confirmation.
+
+Every character and weapon now has an initial combat-stat profile: CRIT DMG, CRIT RATE, ATK, DEF, SPD, ELEMENTAL ATK, HP, and POISE. These are visible on inspection and form the foundation for the planned 3v3 battle system.
 
 Kitty is detected automatically. Character portraits use Kitty's graphics protocol when available and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder is needed beside a release binary. Run WishSim outside Zellij for native Kitty artwork.
 
@@ -77,6 +82,8 @@ cargo run -- pull --count 10
 cargo run -- pull --count 10 --seed 42
 cargo run -- pull --count 10 --banner kaelis
 cargo run -- pull --count 10 --banner seraphine
+cargo run -- pull --count 10 --banner vaughn
+cargo run -- pull --count 10 --banner steven
 cargo run -- pull --count 10 --banner weapon
 cargo run -- stats
 cargo run -- reset
@@ -89,6 +96,8 @@ The three character-event banners share pity and featured guarantees. The weapon
 ## Learn the code
 
 Start in [`src/model.rs`](src/model.rs) for Rust structs and enums, then read [`src/simulation.rs`](src/simulation.rs) for state mutation and tests. [`src/app.rs`](src/app.rs) is the event-driven state machine, and [`src/ui.rs`](src/ui.rs) contains the Ratatui rendering and animation work.
+
+Before implementing new features, read [`docs/V0_2_0_CONSISTENCY_GUIDE.md`](docs/V0_2_0_CONSISTENCY_GUIDE.md). It documents the v0.2.0 architecture, visual language, banner and portrait requirements, integration checklists, and validation rules. Detailed post-v0.2.0 work history and safe backtracking notes are kept in [`logs/`](logs/README.md).
 
 Run the quality checks with:
 

@@ -1,7 +1,7 @@
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use crate::model::{Banner, Item, Rarity, SaveData, SavedWish, WeaponPath, WishResult};
+use crate::model::{Banner, Item, Rarity, SaveData, SavedWish, Stats, WeaponPath, WishResult};
 
 pub const ASTRAEA: Item = Item {
     name: "Astraea, Starbound",
@@ -15,6 +15,16 @@ pub const KAELIS: Item = Item {
 };
 pub const SERAPHINE: Item = Item {
     name: "Seraphine, Verdant Oracle",
+    kind: "Character",
+    rarity: Rarity::Five,
+};
+pub const VAUGHN: Item = Item {
+    name: "Vaughn, Violet Oath",
+    kind: "Character",
+    rarity: Rarity::Five,
+};
+pub const STEVEN: Item = Item {
+    name: "Steven, Azure Shade",
     kind: "Character",
     rarity: Rarity::Five,
 };
@@ -37,6 +47,16 @@ const STANDARD_FIVE_CHARACTERS: &[Item] = &[
     },
     Item {
         name: "Orin, Keeper of Embers",
+        kind: "Character",
+        rarity: Rarity::Five,
+    },
+    Item {
+        name: "Cinder, Forgeheart",
+        kind: "Character",
+        rarity: Rarity::Five,
+    },
+    Item {
+        name: "Sergei, Winterfang",
         kind: "Character",
         rarity: Rarity::Five,
     },
@@ -69,6 +89,21 @@ const FEATURED_FOUR: &[Item] = &[
         kind: "Character",
         rarity: Rarity::Four,
     },
+    Item {
+        name: "Zephra",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Neris",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Brikka",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
 ];
 const FEATURED_FOUR_WEAPONS: &[Item] = &[
     Item {
@@ -84,6 +119,21 @@ const FEATURED_FOUR_WEAPONS: &[Item] = &[
     Item {
         name: "Ironwind Blade",
         kind: "Sword",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Galegrip Knuckles",
+        kind: "Gauntlet",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Winter's Requiem",
+        kind: "Scythe",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Twin Cinderfangs",
+        kind: "Dual Blades",
         rarity: Rarity::Four,
     },
 ];
@@ -132,20 +182,111 @@ pub fn featured_character(banner: Banner) -> Item {
         Banner::Astraea => ASTRAEA,
         Banner::Kaelis => KAELIS,
         Banner::Seraphine => SERAPHINE,
+        Banner::Vaughn => VAUGHN,
+        Banner::Steven => STEVEN,
         Banner::Weapon => ASTRAEA,
     }
 }
 
 pub fn catalog_item(name: &str) -> Option<Item> {
-    [ASTRAEA, KAELIS, SERAPHINE, POLARIS_EDGE, NOVA_GRIMOIRE]
-        .into_iter()
-        .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
-        .chain(STANDARD_FIVE_WEAPONS.iter().copied())
-        .chain(FEATURED_FOUR.iter().copied())
-        .chain(FEATURED_FOUR_WEAPONS.iter().copied())
-        .chain(STANDARD_FOUR.iter().copied())
-        .chain(THREE_STAR.iter().copied())
-        .find(|item| item.name == name)
+    [
+        ASTRAEA,
+        KAELIS,
+        SERAPHINE,
+        VAUGHN,
+        STEVEN,
+        POLARIS_EDGE,
+        NOVA_GRIMOIRE,
+    ]
+    .into_iter()
+    .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
+    .chain(STANDARD_FIVE_WEAPONS.iter().copied())
+    .chain(FEATURED_FOUR.iter().copied())
+    .chain(FEATURED_FOUR_WEAPONS.iter().copied())
+    .chain(STANDARD_FOUR.iter().copied())
+    .chain(THREE_STAR.iter().copied())
+    .find(|item| item.name == name)
+}
+
+pub fn item_element(name: &str) -> &'static str {
+    match name {
+        "Astraea, Starbound" | "Sergei, Winterfang" | "Neris" | "Winter's Requiem" => "Cryo",
+        "Lumen" => "Geo",
+        "Kaelis, Ashen Vanguard"
+        | "Orin, Keeper of Embers"
+        | "Cinder, Forgeheart"
+        | "Steven, Azure Shade"
+        | "Brikka"
+        | "Twin Cinderfangs" => "Pyro",
+        "Seraphine, Verdant Oracle" | "Thorne" => "Dendro",
+        "Vaughn, Violet Oath" | "Veyra, Stormseeker" => "Electro",
+        "Mira" => "Hydro",
+        "Zephra" | "Galegrip Knuckles" => "Anemo",
+        _ => "Unaligned",
+    }
+}
+
+pub fn item_stats(item: Item) -> Stats {
+    if item.kind == "Character" {
+        match item.name {
+            "Vaughn, Violet Oath" => Stats::character(item.rarity, 142, 138, 82, 1280, 150),
+            "Cinder, Forgeheart" => Stats::character(item.rarity, 148, 105, 96, 1190, 135),
+            "Sergei, Winterfang" => Stats {
+                crit_dmg: 125,
+                crit_rate: 5,
+                atk: 154,
+                def: 102,
+                spd: 132,
+                elemental_atk: 82,
+                hp: 880,
+                poise: 64,
+            },
+            "Steven, Azure Shade" => Stats {
+                crit_dmg: 120,
+                crit_rate: 5,
+                atk: 104,
+                def: 74,
+                spd: 142,
+                elemental_atk: 182,
+                hp: 840,
+                poise: 158,
+            },
+            "Zephra" => Stats::character(item.rarity, 112, 78, 128, 890, 70),
+            "Neris" => Stats::character(item.rarity, 121, 82, 106, 930, 82),
+            "Brikka" => Stats::character(item.rarity, 126, 91, 101, 980, 96),
+            _ => Stats::character(
+                item.rarity,
+                if item.rarity == Rarity::Five {
+                    132
+                } else {
+                    108
+                },
+                90,
+                100,
+                if item.rarity == Rarity::Five {
+                    1120
+                } else {
+                    920
+                },
+                90,
+            ),
+        }
+    } else {
+        Stats::weapon(
+            item.rarity,
+            match item.rarity {
+                Rarity::Five => 155,
+                Rarity::Four => 120,
+                Rarity::Three => 82,
+            },
+            if item.name.contains("Gale") { 12 } else { 5 },
+            if item.name.contains("Requiem") {
+                175
+            } else {
+                150
+            },
+        )
+    }
 }
 
 pub struct WishEngine {
@@ -379,5 +520,42 @@ mod tests {
             .map(|r| r.item.name)
             .collect();
         assert_eq!(aa, bb);
+    }
+
+    #[test]
+    fn new_catalog_metadata_matches_character_profiles() {
+        for (name, element, kind) in [
+            ("Vaughn, Violet Oath", "Electro", "Character"),
+            ("Cinder, Forgeheart", "Pyro", "Character"),
+            ("Sergei, Winterfang", "Cryo", "Character"),
+            ("Steven, Azure Shade", "Pyro", "Character"),
+            ("Zephra", "Anemo", "Character"),
+            ("Neris", "Cryo", "Character"),
+            ("Brikka", "Pyro", "Character"),
+            ("Galegrip Knuckles", "Anemo", "Gauntlet"),
+            ("Winter's Requiem", "Cryo", "Scythe"),
+            ("Twin Cinderfangs", "Pyro", "Dual Blades"),
+        ] {
+            let item = catalog_item(name).unwrap();
+            assert_eq!(item.element(), element, "wrong element for {name}");
+            assert_eq!(item.kind, kind, "wrong item type for {name}");
+        }
+        assert_eq!(ASTRAEA.element(), "Cryo");
+
+        let sergei = catalog_item("Sergei, Winterfang").unwrap().stats();
+        assert!(sergei.atk > sergei.def);
+        assert!(sergei.spd > sergei.def);
+        assert!(sergei.def > sergei.hp / 10);
+        assert!(sergei.crit_rate < 10);
+        assert!(sergei.elemental_atk < 100);
+        assert!(sergei.poise < 80);
+
+        let steven = STEVEN.stats();
+        assert!(steven.elemental_atk > steven.atk);
+        assert!(steven.spd > 140);
+        assert!(steven.poise > 150);
+        assert!(steven.atk < 110);
+        assert!(steven.def < 80);
+        assert!(steven.hp < 900);
     }
 }

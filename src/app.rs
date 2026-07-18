@@ -25,9 +25,56 @@ pub struct App {
     pub banner: Banner,
     pub gallery: CharacterGallery,
     pub confirm_quit: bool,
+    pub inventory_sort: InventorySort,
+    pub inventory_kind: InventoryKind,
+    pub inventory_element: usize,
     engine: WishEngine,
     should_quit: bool,
 }
+
+#[derive(Clone, Copy, Debug)]
+pub enum InventorySort {
+    Name,
+    Rarity,
+    Kind,
+    Element,
+}
+impl InventorySort {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Name => "NAME A–Z",
+            Self::Rarity => "RARITY 5★–3★",
+            Self::Kind => "ITEM TYPE",
+            Self::Element => "ELEMENT",
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InventoryKind {
+    All,
+    Character,
+    Weapon,
+}
+impl InventoryKind {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::All => "ALL ITEMS",
+            Self::Character => "CHARACTERS",
+            Self::Weapon => "WEAPONS",
+        }
+    }
+}
+pub const ELEMENT_FILTERS: [&str; 9] = [
+    "ALL",
+    "PYRO",
+    "HYDRO",
+    "ELECTRO",
+    "CRYO",
+    "ANEMO",
+    "GEO",
+    "DENDRO",
+    "UNALIGNED",
+];
 
 pub enum Phase {
     Home,
@@ -79,6 +126,9 @@ pub fn run() -> Result<()> {
         banner: Banner::Astraea,
         gallery: CharacterGallery::load()?,
         confirm_quit: false,
+        inventory_sort: InventorySort::Name,
+        inventory_kind: InventoryKind::All,
+        inventory_element: 0,
         engine: WishEngine::random(),
         should_quit: false,
     };
@@ -116,6 +166,47 @@ pub fn run() -> Result<()> {
 }
 
 impl App {
+    pub fn inventory_names(&self) -> Vec<String> {
+        let mut names = self
+            .save
+            .inventory
+            .keys()
+            .filter(|name| {
+                let Some(item) = crate::simulation::catalog_item(name) else {
+                    return true;
+                };
+                let kind_ok = match self.inventory_kind {
+                    InventoryKind::All => true,
+                    InventoryKind::Character => item.kind == "Character",
+                    InventoryKind::Weapon => item.kind != "Character",
+                };
+                let element = ELEMENT_FILTERS[self.inventory_element];
+                kind_ok && (element == "ALL" || item.element().eq_ignore_ascii_case(element))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        names.sort_by(|a, b| {
+            let aa = crate::simulation::catalog_item(a);
+            let bb = crate::simulation::catalog_item(b);
+            match self.inventory_sort {
+                InventorySort::Name => a.cmp(b),
+                InventorySort::Rarity => bb
+                    .map_or(0, |i| i.rarity.value())
+                    .cmp(&aa.map_or(0, |i| i.rarity.value()))
+                    .then(a.cmp(b)),
+                InventorySort::Kind => aa
+                    .map_or("", |i| i.kind)
+                    .cmp(bb.map_or("", |i| i.kind))
+                    .then(a.cmp(b)),
+                InventorySort::Element => aa
+                    .map_or("", |i| i.element())
+                    .cmp(bb.map_or("", |i| i.element()))
+                    .then(a.cmp(b)),
+            }
+        });
+        names
+    }
+
     fn is_animating(&self) -> bool {
         match &self.phase {
             Phase::Flight { .. } | Phase::FiveStarIntro { .. } => true,
@@ -139,6 +230,7 @@ impl App {
             self.confirm_quit = true;
             return Ok(());
         }
+        let inventory_names = self.inventory_names();
         match (&mut self.phase, key) {
             (Phase::Home, KeyCode::Char('1')) | (Phase::Home, KeyCode::Enter) => {
                 self.begin_pull(1)?
@@ -161,24 +253,47 @@ impl App {
             (Phase::History, KeyCode::Esc | KeyCode::Char('h')) => self.phase = Phase::Home,
             (Phase::Inventory { cursor, .. }, KeyCode::Up) => *cursor = cursor.saturating_sub(1),
             (Phase::Inventory { cursor, .. }, KeyCode::Down) => {
-                *cursor = (*cursor + 1).min(self.save.inventory.len().saturating_sub(1));
+                *cursor = (*cursor + 1).min(inventory_names.len().saturating_sub(1));
             }
             (Phase::Inventory { cursor, selected }, KeyCode::Char(' ')) => {
-                if let Some(name) = self.save.inventory.keys().nth(*cursor).cloned()
+                if let Some(name) = inventory_names.get(*cursor).cloned()
                     && !selected.remove(&name)
                 {
                     selected.insert(name);
                 }
             }
             (Phase::Inventory { selected, .. }, KeyCode::Char('a')) => {
-                if selected.len() == self.save.inventory.len() {
+                if selected.len() == inventory_names.len() {
                     selected.clear();
                 } else {
-                    *selected = self.save.inventory.keys().cloned().collect();
+                    *selected = inventory_names.iter().cloned().collect();
                 }
             }
+            (Phase::Inventory { cursor, .. }, KeyCode::Char('s')) => {
+                self.inventory_sort = match self.inventory_sort {
+                    InventorySort::Name => InventorySort::Rarity,
+                    InventorySort::Rarity => InventorySort::Kind,
+                    InventorySort::Kind => InventorySort::Element,
+                    InventorySort::Element => InventorySort::Name,
+                };
+                *cursor = 0;
+            }
+            (Phase::Inventory { cursor, selected }, KeyCode::Char('f')) => {
+                self.inventory_kind = match self.inventory_kind {
+                    InventoryKind::All => InventoryKind::Character,
+                    InventoryKind::Character => InventoryKind::Weapon,
+                    InventoryKind::Weapon => InventoryKind::All,
+                };
+                *cursor = 0;
+                selected.clear();
+            }
+            (Phase::Inventory { cursor, selected }, KeyCode::Char('e')) => {
+                self.inventory_element = (self.inventory_element + 1) % ELEMENT_FILTERS.len();
+                *cursor = 0;
+                selected.clear();
+            }
             (Phase::Inventory { cursor, selected }, KeyCode::Enter) => {
-                if let Some(name) = self.save.inventory.keys().nth(*cursor).cloned() {
+                if let Some(name) = inventory_names.get(*cursor).cloned() {
                     self.phase = Phase::InventoryDetail {
                         cursor: *cursor,
                         selected: std::mem::take(selected),
@@ -188,13 +303,7 @@ impl App {
             }
             (Phase::Inventory { cursor, selected }, KeyCode::Char('d')) => {
                 let targets: Vec<String> = if selected.is_empty() {
-                    self.save
-                        .inventory
-                        .keys()
-                        .nth(*cursor)
-                        .cloned()
-                        .into_iter()
-                        .collect()
+                    inventory_names.get(*cursor).cloned().into_iter().collect()
                 } else {
                     selected.iter().cloned().collect()
                 };
@@ -241,16 +350,11 @@ impl App {
                     selected: std::mem::take(selected),
                 };
             }
-            (
-                Phase::ConfirmInventoryDelete {
-                    cursor, targets, ..
-                },
-                KeyCode::Char('y'),
-            ) => {
+            (Phase::ConfirmInventoryDelete { targets, .. }, KeyCode::Char('y')) => {
                 delete_inventory_entries(&mut self.save, targets);
                 storage::save(&self.save)?;
                 self.phase = Phase::Inventory {
-                    cursor: (*cursor).min(self.save.inventory.len().saturating_sub(1)),
+                    cursor: 0,
                     selected: BTreeSet::new(),
                 };
             }

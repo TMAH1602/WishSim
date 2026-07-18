@@ -72,6 +72,44 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Mira" => include_bytes!("../assets/characters/mira.png"),
         "Thorne" => include_bytes!("../assets/characters/thorne.png"),
         "Lumen" => include_bytes!("../assets/characters/lumen.png"),
+        "Vaughn, Violet Oath" => include_bytes!("../assets/characters/vaughn.png"),
+        "Steven, Azure Shade" => include_bytes!("../assets/characters/steven.png"),
+        "Cinder, Forgeheart" => include_bytes!("../assets/characters/cinder.png"),
+        "Sergei, Winterfang" => include_bytes!("../assets/characters/sergei.png"),
+        "Zephra" => include_bytes!("../assets/characters/zephra.png"),
+        "Neris" => include_bytes!("../assets/characters/neris.png"),
+        "Brikka" => include_bytes!("../assets/characters/brikka.png"),
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_character_has_kitty_portrait_bytes() {
+        for name in [
+            "Astraea, Starbound",
+            "Kaelis, Ashen Vanguard",
+            "Seraphine, Verdant Oracle",
+            "Veyra, Stormseeker",
+            "Orin, Keeper of Embers",
+            "Mira",
+            "Thorne",
+            "Lumen",
+            "Vaughn, Violet Oath",
+            "Steven, Azure Shade",
+            "Cinder, Forgeheart",
+            "Sergei, Winterfang",
+            "Zephra",
+            "Neris",
+            "Brikka",
+        ] {
+            assert!(
+                portrait_bytes(name).is_some(),
+                "missing Kitty portrait for {name}"
+            );
+        }
+    }
 }

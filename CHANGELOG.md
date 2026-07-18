@@ -4,6 +4,18 @@ All notable changes to WishSim will be documented here.
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-18
+
+- Added inventory sorting by name, rarity, item type, and element.
+- Added character/weapon and elemental inventory filters.
+- Added foundational CRIT DMG, CRIT RATE, ATK, DEF, SPD, ELEMENTAL ATK, HP, and POISE profiles.
+- Added limited five-star banners for Vaughn and Steven.
+- Added standard five-star characters Cinder and Sergei.
+- Added four-star characters Zephra, Neris, and Brikka.
+- Added Gauntlet, Scythe, and Dual Blades weapon classes and new four-star weapons.
+- Added transparent pixel-art portraits for every new character in both Kitty and portable ANSI rendering paths.
+- Added v0.2.0 consistency documentation and dated development logs for future feature work and selective backtracking.
+
 ## 0.2.0 - 2026-07-17
 
 - Added an inspectable inventory with owned counts.

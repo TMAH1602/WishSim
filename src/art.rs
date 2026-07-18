@@ -100,4 +100,65 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     ("Mira", include_bytes!("../assets/characters/mira.png")),
     ("Thorne", include_bytes!("../assets/characters/thorne.png")),
     ("Lumen", include_bytes!("../assets/characters/lumen.png")),
+    (
+        "Vaughn, Violet Oath",
+        include_bytes!("../assets/characters/vaughn.png"),
+    ),
+    (
+        "Steven, Azure Shade",
+        include_bytes!("../assets/characters/steven.png"),
+    ),
+    (
+        "Cinder, Forgeheart",
+        include_bytes!("../assets/characters/cinder.png"),
+    ),
+    (
+        "Sergei, Winterfang",
+        include_bytes!("../assets/characters/sergei.png"),
+    ),
+    ("Zephra", include_bytes!("../assets/characters/zephra.png")),
+    ("Neris", include_bytes!("../assets/characters/neris.png")),
+    ("Brikka", include_bytes!("../assets/characters/brikka.png")),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_portraits_are_transparent_cutouts() {
+        for (name, bytes) in PORTRAITS {
+            let image = image::load_from_memory(bytes).unwrap().to_rgba8();
+            let corners = [
+                image.get_pixel(0, 0),
+                image.get_pixel(image.width() - 1, 0),
+                image.get_pixel(0, image.height() - 1),
+                image.get_pixel(image.width() - 1, image.height() - 1),
+            ];
+            assert!(
+                corners.iter().all(|pixel| pixel[3] == 0),
+                "{name} has an opaque corner: {corners:?}"
+            );
+            assert!(
+                image.pixels().any(|pixel| pixel[3] == 0),
+                "{name} has no transparency"
+            );
+            assert!(
+                image.pixels().any(|pixel| pixel[3] == 255),
+                "{name} has no opaque character pixels"
+            );
+        }
+    }
+
+    #[test]
+    fn every_portrait_loads_through_the_gallery_pipeline() {
+        let gallery = CharacterGallery::load().unwrap();
+        for (name, _) in PORTRAITS {
+            let portrait = gallery.get(name).unwrap();
+            assert!(portrait.reveal.width >= 8, "{name} reveal is too narrow");
+            assert!(portrait.reveal.height >= 8, "{name} reveal is too short");
+            assert!(portrait.detail.width >= 8, "{name} detail is too narrow");
+            assert!(portrait.detail.height >= 8, "{name} detail is too short");
+        }
+    }
+}
