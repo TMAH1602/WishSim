@@ -9,7 +9,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crate::{
     art::CharacterGallery,
     kitty::GraphicsRenderer,
-    model::{Banner, SaveData, WishResult},
+    model::{Banner, SaveData, WeaponPath, WishResult},
     simulation::WishEngine,
     storage, ui,
 };
@@ -78,6 +78,16 @@ pub const ELEMENT_FILTERS: [&str; 9] = [
 
 pub enum Phase {
     Home,
+    BannerSelect {
+        cursor: usize,
+    },
+    WeaponSelect {
+        cursor: usize,
+        preview: bool,
+    },
+    CharacterArchive {
+        cursor: usize,
+    },
     History,
     Inventory {
         cursor: usize,
@@ -278,9 +288,79 @@ impl App {
             (Phase::Home, KeyCode::Char('0')) => self.begin_pull(10)?,
             (Phase::Home, KeyCode::Left) => self.change_banner(-1),
             (Phase::Home, KeyCode::Right) => self.change_banner(1),
+            (Phase::Home, KeyCode::Char('b')) => {
+                let cursor = Banner::SELECTOR
+                    .iter()
+                    .position(|banner| *banner == self.banner)
+                    .unwrap_or(0);
+                self.phase = Phase::BannerSelect { cursor };
+            }
+            (Phase::Home, KeyCode::Char('c')) => {
+                self.phase = Phase::CharacterArchive { cursor: 0 };
+            }
+            (Phase::BannerSelect { cursor }, KeyCode::Left) => {
+                *cursor = cursor.saturating_sub(1);
+            }
+            (Phase::BannerSelect { cursor }, KeyCode::Right) => {
+                *cursor = (*cursor + 1).min(Banner::SELECTOR.len() - 1);
+            }
+            (Phase::BannerSelect { cursor }, KeyCode::Up) => {
+                *cursor = cursor.saturating_sub(3);
+            }
+            (Phase::BannerSelect { cursor }, KeyCode::Down) => {
+                *cursor = (*cursor + 3).min(Banner::SELECTOR.len() - 1);
+            }
+            (Phase::BannerSelect { cursor }, KeyCode::Enter) => {
+                self.banner = Banner::SELECTOR[*cursor];
+                self.phase = Phase::Home;
+            }
+            (Phase::BannerSelect { .. }, KeyCode::Esc | KeyCode::Char('b')) => {
+                self.phase = Phase::Home;
+            }
             (Phase::Home, KeyCode::Char('p')) if self.banner == Banner::Weapon => {
-                self.save.weapon_pity.path = self.save.weapon_pity.path.toggled();
+                let cursor = WeaponPath::ALL
+                    .iter()
+                    .position(|path| *path == self.save.weapon_pity.path)
+                    .unwrap_or(0);
+                self.phase = Phase::WeaponSelect {
+                    cursor,
+                    preview: false,
+                };
+            }
+            (Phase::WeaponSelect { cursor, .. }, KeyCode::Up) => {
+                *cursor = cursor.saturating_sub(1);
+            }
+            (Phase::WeaponSelect { cursor, .. }, KeyCode::Down) => {
+                *cursor = (*cursor + 1).min(WeaponPath::ALL.len() - 1);
+            }
+            (Phase::WeaponSelect { preview, .. }, KeyCode::Char('v')) => *preview = !*preview,
+            (Phase::WeaponSelect { cursor, .. }, KeyCode::Enter) => {
+                self.save.weapon_pity.path = WeaponPath::ALL[*cursor];
                 self.save.weapon_pity.fate_points = 0;
+                storage::save(&self.save)?;
+                self.phase = Phase::Home;
+            }
+            (Phase::WeaponSelect { .. }, KeyCode::Esc | KeyCode::Char('p')) => {
+                self.phase = Phase::Home;
+            }
+            (Phase::CharacterArchive { cursor }, KeyCode::Left) => {
+                *cursor = cursor.saturating_sub(1);
+            }
+            (Phase::CharacterArchive { cursor }, KeyCode::Right) => {
+                *cursor = (*cursor + 1).min(crate::simulation::all_characters().len() - 1);
+            }
+            (Phase::CharacterArchive { cursor }, KeyCode::Up) => {
+                *cursor = cursor.saturating_sub(3);
+            }
+            (Phase::CharacterArchive { cursor }, KeyCode::Down) => {
+                *cursor = (*cursor + 3).min(crate::simulation::all_characters().len() - 1);
+            }
+            (Phase::CharacterArchive { .. }, KeyCode::Esc | KeyCode::Char('c')) => {
+                self.phase = Phase::Home;
+            }
+            (Phase::Home, KeyCode::Char('p')) if self.banner == Banner::Standard => {
+                self.save.standard_pity.path = self.save.standard_pity.path.next();
+                self.save.standard_pity.fate_points = 0;
                 storage::save(&self.save)?;
             }
             (Phase::Home, KeyCode::Char('h')) => self.phase = Phase::History,

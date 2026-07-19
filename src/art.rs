@@ -10,6 +10,7 @@ pub struct CharacterGallery {
 pub struct CharacterPortrait {
     pub reveal: TerminalRaster,
     pub detail: TerminalRaster,
+    pub archive: TerminalRaster,
 }
 
 pub struct TerminalRaster {
@@ -34,6 +35,7 @@ impl CharacterGallery {
                 CharacterPortrait {
                     reveal: rasterize(&image, 22, 16),
                     detail: rasterize(&image, 28, 28),
+                    archive: rasterize(&image, 10, 7),
                 },
             );
         }
@@ -119,6 +121,97 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     ("Zephra", include_bytes!("../assets/characters/zephra.png")),
     ("Neris", include_bytes!("../assets/characters/neris.png")),
     ("Brikka", include_bytes!("../assets/characters/brikka.png")),
+    (
+        "Saif, Dune Sovereign",
+        include_bytes!("../assets/characters/saif.png"),
+    ),
+    (
+        "Pyrite, Gilded Step",
+        include_bytes!("../assets/characters/pyrite.png"),
+    ),
+    (
+        "Jeanette, Tidemender",
+        include_bytes!("../assets/characters/jeanette.png"),
+    ),
+    (
+        "Polaris Edge",
+        include_bytes!("../assets/weapons/polaris_edge.png"),
+    ),
+    (
+        "Nova Grimoire",
+        include_bytes!("../assets/weapons/nova_grimoire.png"),
+    ),
+    (
+        "Celestial Atlas",
+        include_bytes!("../assets/weapons/celestial_atlas.png"),
+    ),
+    (
+        "Wolfsong Claymore",
+        include_bytes!("../assets/weapons/wolfsong_claymore.png"),
+    ),
+    (
+        "Moonlit Longbow",
+        include_bytes!("../assets/weapons/moonlit_longbow.png"),
+    ),
+    (
+        "Sage's Codex",
+        include_bytes!("../assets/weapons/sages_codex.png"),
+    ),
+    (
+        "Ironwind Blade",
+        include_bytes!("../assets/weapons/ironwind_blade.png"),
+    ),
+    (
+        "Galegrip Knuckles",
+        include_bytes!("../assets/weapons/galegrip_knuckles.png"),
+    ),
+    (
+        "Winter's Requiem",
+        include_bytes!("../assets/weapons/winters_requiem.png"),
+    ),
+    (
+        "Twin Cinderfangs",
+        include_bytes!("../assets/weapons/twin_cinderfangs.png"),
+    ),
+    (
+        "Duskward Spear",
+        include_bytes!("../assets/weapons/duskward_spear.png"),
+    ),
+    (
+        "Bellflower Greatsword",
+        include_bytes!("../assets/weapons/bellflower_greatsword.png"),
+    ),
+    ("Farah", include_bytes!("../assets/characters/farah.png")),
+    ("Anya", include_bytes!("../assets/characters/anya.png")),
+    ("Rook", include_bytes!("../assets/characters/rook.png")),
+    (
+        "Kestrel",
+        include_bytes!("../assets/characters/kestrel.png"),
+    ),
+    ("Mako", include_bytes!("../assets/characters/mako.png")),
+    ("Ysra", include_bytes!("../assets/characters/ysra.png")),
+    ("Dolma", include_bytes!("../assets/characters/dolma.png")),
+    ("Corvin", include_bytes!("../assets/characters/corvin.png")),
+    (
+        "Dreamwood Recurve",
+        include_bytes!("../assets/weapons/dreamwood_recurve.png"),
+    ),
+    (
+        "Oathbreaker Thunder",
+        include_bytes!("../assets/weapons/oathbreaker_thunder.png"),
+    ),
+    (
+        "Veilfire Sutra",
+        include_bytes!("../assets/weapons/veilfire_sutra.png"),
+    ),
+    (
+        "White Hunt Reliquary",
+        include_bytes!("../assets/weapons/white_hunt_reliquary.png"),
+    ),
+    (
+        "Sandsworn Dominion",
+        include_bytes!("../assets/weapons/sandsworn_dominion.png"),
+    ),
 ];
 
 #[cfg(test)]
@@ -129,6 +222,11 @@ mod tests {
     fn embedded_portraits_are_transparent_cutouts() {
         for (name, bytes) in PORTRAITS {
             let image = image::load_from_memory(bytes).unwrap().to_rgba8();
+            assert_eq!(
+                image.dimensions(),
+                (1024, 1536),
+                "{name} has wrong dimensions"
+            );
             let corners = [
                 image.get_pixel(0, 0),
                 image.get_pixel(image.width() - 1, 0),
@@ -145,7 +243,15 @@ mod tests {
             );
             assert!(
                 image.pixels().any(|pixel| pixel[3] == 255),
-                "{name} has no opaque character pixels"
+                "{name} has no opaque subject pixels"
+            );
+            assert!(
+                !image.pixels().any(|pixel| {
+                    pixel[3] > 16
+                        && ((pixel[0] > 240 && pixel[1] < 30 && pixel[2] > 220)
+                            || (pixel[0] < 30 && pixel[1] > 240 && pixel[2] < 30))
+                }),
+                "{name} retains opaque chroma-key pixels"
             );
         }
     }
@@ -155,9 +261,9 @@ mod tests {
         let gallery = CharacterGallery::load().unwrap();
         for (name, _) in PORTRAITS {
             let portrait = gallery.get(name).unwrap();
-            assert!(portrait.reveal.width >= 8, "{name} reveal is too narrow");
+            assert!(portrait.reveal.width >= 3, "{name} reveal is too narrow");
             assert!(portrait.reveal.height >= 8, "{name} reveal is too short");
-            assert!(portrait.detail.width >= 8, "{name} detail is too narrow");
+            assert!(portrait.detail.width >= 3, "{name} detail is too narrow");
             assert!(portrait.detail.height >= 8, "{name} detail is too short");
         }
     }

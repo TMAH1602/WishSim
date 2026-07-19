@@ -4,12 +4,12 @@ use crate::{
     app::{App, ELEMENT_FILTERS, Phase},
     art::{CharacterGallery, TerminalRaster},
     model::{Banner, Rarity, WishResult},
-    simulation::catalog_item,
+    simulation::{all_characters, catalog_item, standard_character, weapon_for_path},
 };
 use ratatui::{
     Frame,
     buffer::Buffer,
-    layout::{Alignment, Constraint, Flex, Layout, Rect},
+    layout::{Alignment, Constraint, Flex, Layout, Margin, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Clear, Gauge, Padding, Paragraph, Widget, Wrap},
@@ -25,7 +25,9 @@ pub fn graphics_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
         return None;
     }
     match &app.phase {
-        Phase::Reveal { results, index, .. } if results[*index].item.kind == "Character" => {
+        Phase::Reveal { results, index, .. }
+            if app.gallery.get(results[*index].item.name).is_some() =>
+        {
             let card = centered(area, 72.min(area.width - 8), 36.min(area.height - 4));
             let inner = card.inner(ratatui::layout::Margin {
                 horizontal: 2,
@@ -35,13 +37,20 @@ pub fn graphics_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
                 Layout::vertical([Constraint::Min(8), Constraint::Length(6)]).areas(inner);
             Some((results[*index].item.name, portrait_fit(sprite_area)))
         }
-        Phase::Detail { results, selected } if results[*selected].item.kind == "Character" => {
+        Phase::Detail { results, selected }
+            if app.gallery.get(results[*selected].item.name).is_some() =>
+        {
             Some((results[*selected].item.name, detail_portrait_area(area)))
         }
-        Phase::InventoryDetail { name, .. }
-            if catalog_item(name).is_some_and(|item| item.kind == "Character") =>
-        {
+        Phase::InventoryDetail { name, .. } if app.gallery.get(name).is_some() => {
             Some((name, detail_portrait_area(area)))
+        }
+        Phase::WeaponSelect {
+            cursor,
+            preview: true,
+        } => {
+            let item = weapon_for_path(crate::model::WeaponPath::ALL[*cursor]);
+            Some((item.name, weapon_select_portrait_area(area)))
         }
         _ => None,
     }
@@ -60,6 +69,22 @@ fn detail_portrait_area(area: Rect) -> Rect {
     portrait_fit(art_area.inner(ratatui::layout::Margin {
         horizontal: 1,
         vertical: 2,
+    }))
+}
+
+fn weapon_select_portrait_area(area: Rect) -> Rect {
+    let panel = centered(area, area.width.min(94), area.height.min(31));
+    let inner = panel.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [body, _] = Layout::vertical([Constraint::Min(20), Constraint::Length(2)]).areas(inner);
+    let [_, art] = Layout::horizontal([Constraint::Percentage(46), Constraint::Percentage(54)])
+        .spacing(2)
+        .areas(body);
+    portrait_fit(art.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
     }))
 }
 
@@ -87,6 +112,9 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
 
     match &app.phase {
         Phase::Home => home(frame, app),
+        Phase::BannerSelect { cursor } => banner_select(frame, app, *cursor),
+        Phase::WeaponSelect { cursor, preview } => weapon_select(frame, app, *cursor, *preview),
+        Phase::CharacterArchive { cursor } => character_archive(frame, app, *cursor),
         Phase::History => history(frame, app),
         Phase::Inventory { cursor, selected } => inventory(frame, app, *cursor, selected),
         Phase::InventoryDetail { name, .. } => {
@@ -221,6 +249,24 @@ fn home(frame: &mut Frame, app: &App) {
             "By the time the flame is seen, the shadow has already moved.",
             Color::Rgb(65, 155, 255),
         ),
+        Banner::Sergei => (
+            "S E R G E I",
+            "WINTERFANG  •  WOLFBOUND HUNTER",
+            "The old winter bares its fangs for those it remembers.",
+            Color::Rgb(105, 185, 255),
+        ),
+        Banner::Saif => (
+            "S A I F",
+            "DUNE SOVEREIGN  •  SANDWARD LANCER",
+            "Every kingdom is only stone waiting to become sand.",
+            Color::Rgb(239, 234, 187),
+        ),
+        Banner::Standard => (
+            "E V E R L A S T I N G   A R C H I V E",
+            "STANDARD RESONANCE  •  CHOSEN DESTINY",
+            "Name the star you seek, and every wandering light brings it closer.",
+            Color::Rgb(125, 205, 225),
+        ),
         Banner::Weapon => (
             "I N C A R N A T E   A R M A M E N T S",
             "POLARIS EDGE  ✦  NOVA GRIMOIRE",
@@ -257,8 +303,14 @@ fn home(frame: &mut Frame, app: &App) {
                     app.save.weapon_pity.path.name(),
                     app.save.weapon_pity.fate_points
                 )
+            } else if app.banner == Banner::Standard {
+                format!(
+                    "CHOSEN DESTINY: {}  •  {}/1 FATE  •  [P] change target",
+                    app.save.standard_pity.path.name(),
+                    app.save.standard_pity.fate_points
+                )
             } else {
-                "← / →  CHANGE BANNER".into()
+                "← / →  CHANGE BANNER  •  [B] VIEW LIMITED ARCHIVE".into()
             })
             .fg(hero_color),
         ]))
@@ -278,6 +330,13 @@ fn home(frame: &mut Frame, app: &App) {
             app.save.weapon_pity.four_star,
             app.save.weapon_pity.guaranteed_featured || app.save.weapon_pity.fate_points > 0,
         )
+    } else if app.banner == Banner::Standard {
+        (
+            app.save.standard_pity.five_star,
+            90,
+            app.save.standard_pity.four_star,
+            app.save.standard_pity.fate_points > 0,
+        )
     } else {
         (
             app.save.pity.five_star,
@@ -292,6 +351,8 @@ fn home(frame: &mut Frame, app: &App) {
                 Block::new()
                     .title(if app.banner == Banner::Weapon {
                         " 5★ Weapon Pity "
+                    } else if app.banner == Banner::Standard {
+                        " 5★ Standard Fate "
                     } else {
                         " 5★ Shared Event Pity "
                     })
@@ -320,7 +381,7 @@ fn home(frame: &mut Frame, app: &App) {
         rows[1],
     );
 
-    let buttons = Line::from(vec![
+    let wish_buttons = Line::from(vec![
         Span::styled(
             "  [1]  WISH ×1  ",
             Style::new()
@@ -333,19 +394,26 @@ fn home(frame: &mut Frame, app: &App) {
             "  [0]  WISH ×10  ",
             Style::new().fg(Color::Rgb(35, 24, 5)).bg(GOLD).bold(),
         ),
-        Span::raw("   "),
+        Span::raw("    "),
         Span::styled(
             " [H] HISTORY ",
             Style::new().fg(Color::White).bg(Color::Rgb(45, 52, 76)),
         ),
+    ]);
+    let archive_buttons = Line::from(vec![
         Span::raw("   "),
         Span::styled(
             " [I] INVENTORY ",
             Style::new().fg(Color::White).bg(Color::Rgb(40, 75, 72)),
         ),
+        Span::raw("   "),
+        Span::styled(
+            " [C] ARCHIVE ",
+            Style::new().fg(Color::White).bg(Color::Rgb(52, 48, 82)),
+        ),
     ]);
     frame.render_widget(
-        Paragraph::new(buttons)
+        Paragraph::new(Text::from(vec![wish_buttons, archive_buttons]))
             .alignment(Alignment::Center)
             .block(Block::new().padding(Padding::vertical(1))),
         actions,
@@ -369,6 +437,324 @@ fn home(frame: &mut Frame, app: &App) {
         ]))
         .alignment(Alignment::Center),
         footer,
+    );
+}
+
+fn banner_select(frame: &mut Frame, app: &App, cursor: usize) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 0.0,
+            intensity: 0.7,
+        },
+        area,
+    );
+    let panel = centered(area, area.width.min(104), area.height.min(32));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(" FIVE-STAR WISH ARCHIVE ")
+            .title_alignment(Alignment::Center)
+            .title_style(Style::new().fg(GOLD).bold()),
+        panel,
+    );
+    let inner = panel.inner(ratatui::layout::Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [heading, grid, help] = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(20),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
+    frame.render_widget(
+        Paragraph::new("Choose a limited event record or the separately tracked Standard Archive.")
+            .centered()
+            .fg(DIM),
+        heading,
+    );
+    let rows = Layout::vertical([
+        Constraint::Percentage(34),
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+    ])
+    .spacing(1)
+    .split(grid);
+    for (index, banner) in Banner::SELECTOR.iter().enumerate() {
+        let columns = Layout::horizontal([
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+            Constraint::Percentage(33),
+        ])
+        .spacing(1)
+        .split(rows[index / 3]);
+        let card = columns[index % 3];
+        let selected = index == cursor;
+        let current = *banner == app.banner;
+        let item = if *banner == Banner::Standard {
+            standard_character(app.save.standard_pity.path)
+        } else {
+            crate::simulation::featured_character(*banner)
+        };
+        let profile = item_profile(&WishResult {
+            item,
+            rarity: Rarity::Five,
+            featured: true,
+            wish_number: 0,
+        });
+        let style = if selected {
+            Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
+        } else {
+            Style::new().fg(profile.color).bg(Color::Rgb(8, 12, 28))
+        };
+        frame.render_widget(
+            Paragraph::new(Text::from(vec![
+                Line::from(item.name).bold(),
+                Line::from(profile.title),
+                Line::from(format!("{}  •  {}", profile.element, profile.weapon)),
+                Line::from(if current {
+                    "✦ CURRENT RECORD"
+                } else if *banner == Banner::Standard {
+                    "STANDARD  •  1 FATE"
+                } else {
+                    "★★★★★"
+                }),
+            ]))
+            .alignment(Alignment::Center)
+            .style(style)
+            .block(Block::new().borders(Borders::ALL).border_style(style)),
+            card,
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("← ↑ ↓ → select  •  ENTER open banner  •  ESC / B return")
+            .centered()
+            .fg(DIM),
+        help,
+    );
+}
+
+fn weapon_select(frame: &mut Frame, app: &App, cursor: usize, preview: bool) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 0.0,
+            intensity: 0.7,
+        },
+        area,
+    );
+    let panel = centered(area, area.width.min(94), area.height.min(31));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(" INCARNATE PATH ")
+            .title_alignment(Alignment::Center)
+            .title_style(Style::new().fg(GOLD).bold()),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [body, help] = Layout::vertical([Constraint::Min(20), Constraint::Length(2)]).areas(inner);
+    let [list, art] = Layout::horizontal([Constraint::Percentage(46), Constraint::Percentage(54)])
+        .spacing(2)
+        .areas(body);
+    let selected = weapon_for_path(crate::model::WeaponPath::ALL[cursor]);
+    let rows = crate::model::WeaponPath::ALL
+        .iter()
+        .enumerate()
+        .map(|(index, path)| {
+            let marker = if *path == app.save.weapon_pity.path {
+                "✦"
+            } else {
+                " "
+            };
+            let style = if index == cursor {
+                Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
+            } else {
+                Style::new().fg(Color::White)
+            };
+            Line::from(format!(" {marker} {:<25}", path.name())).style(style)
+        })
+        .collect::<Vec<_>>();
+    frame.render_widget(
+        Paragraph::new(rows).block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(PURPLE))
+                .title(" SELECTED DESTINY "),
+        ),
+        list,
+    );
+    let result = WishResult {
+        item: selected,
+        rarity: Rarity::Five,
+        featured: true,
+        wish_number: 0,
+    };
+    let profile = item_profile(&result);
+    let art_inner = art.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_style(Style::new().fg(profile.color))
+            .title(format!(" {} ", selected.name)),
+        art,
+    );
+    if preview {
+        if !app.graphics
+            && let Some(portrait) = app.gallery.get(selected.name)
+        {
+            frame.render_widget(TerminalPortrait::new(&portrait.detail), art_inner);
+        }
+    } else {
+        frame.render_widget(
+            Paragraph::new(Text::from(vec![
+                Line::from(""),
+                Line::from("V").fg(GOLD).bold(),
+                Line::from("PREVIEW WEAPON ART").fg(DIM),
+                Line::from(""),
+                Line::from(format!("{}  •  {}", profile.element, profile.weapon)).fg(profile.color),
+            ]))
+            .centered(),
+            art_inner,
+        );
+    }
+    frame.render_widget(
+        Paragraph::new(
+            "↑ / ↓ browse  •  V preview art  •  ENTER choose (resets Fate)  •  ESC return",
+        )
+        .centered()
+        .fg(DIM),
+        help,
+    );
+}
+
+fn character_archive(frame: &mut Frame, app: &App, cursor: usize) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 0.0,
+            intensity: 0.65,
+        },
+        area,
+    );
+    let panel = centered(area, area.width.min(104), area.height.min(32));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(" CHARACTER ARCHIVE ")
+            .title_alignment(Alignment::Center)
+            .title_style(Style::new().fg(GOLD).bold()),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [heading, grid, help] = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(22),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
+    let characters = all_characters();
+    let owned = characters
+        .iter()
+        .filter(|item| app.save.inventory.contains_key(item.name))
+        .count();
+    frame.render_widget(
+        Paragraph::new(format!(
+            "RESONANCES RECORDED  {owned} / {}",
+            characters.len()
+        ))
+        .centered()
+        .fg(DIM),
+        heading,
+    );
+    let page_start = (cursor / 6) * 6;
+    let rows = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .spacing(1)
+        .split(grid);
+    for (slot, item) in characters.iter().skip(page_start).take(6).enumerate() {
+        let columns = Layout::horizontal([
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+            Constraint::Percentage(33),
+        ])
+        .spacing(1)
+        .split(rows[slot / 3]);
+        let card = columns[slot % 3];
+        let index = page_start + slot;
+        let selected = index == cursor;
+        let unlocked = app.save.inventory.contains_key(item.name);
+        let border = if selected {
+            GOLD
+        } else if unlocked {
+            rarity_color(item.rarity)
+        } else {
+            Color::Rgb(55, 62, 78)
+        };
+        frame.render_widget(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(border)),
+            card,
+        );
+        let card_inner = card.inner(Margin {
+            horizontal: 1,
+            vertical: 0,
+        });
+        let [portrait_area, name_area] =
+            Layout::vertical([Constraint::Min(7), Constraint::Length(2)]).areas(card_inner);
+        if unlocked {
+            if let Some(portrait) = app.gallery.get(item.name) {
+                frame.render_widget(TerminalPortrait::new(&portrait.archive), portrait_area);
+            }
+        } else {
+            frame.render_widget(
+                Paragraph::new("\n   ?")
+                    .centered()
+                    .style(Style::new().fg(Color::Rgb(70, 75, 88)).bold()),
+                portrait_area,
+            );
+        }
+        let label = if unlocked {
+            item.rarity.stars()
+        } else {
+            "LOCKED"
+        };
+        frame.render_widget(
+            Paragraph::new(Text::from(vec![
+                Line::from(item.name)
+                    .fg(if unlocked { Color::White } else { DIM })
+                    .bold(),
+                Line::from(label).fg(border),
+            ]))
+            .centered(),
+            name_area,
+        );
+    }
+    frame.render_widget(
+        Paragraph::new(format!(
+            "← ↑ ↓ → browse  •  page {} / {}  •  ESC / C return",
+            cursor / 6 + 1,
+            characters.len().div_ceil(6)
+        ))
+        .centered()
+        .fg(DIM),
+        help,
     );
 }
 
@@ -512,11 +898,9 @@ fn reveal(
     });
     let [sprite_area, label_area] =
         Layout::vertical([Constraint::Min(8), Constraint::Length(6)]).areas(inner);
-    if result.item.kind == "Character" {
-        if portable_art && let Some(portrait) = gallery.get(result.item.name) {
-            frame.render_widget(TerminalPortrait::new(&portrait.reveal), sprite_area);
-        }
-    } else {
+    if portable_art && let Some(portrait) = gallery.get(result.item.name) {
+        frame.render_widget(TerminalPortrait::new(&portrait.reveal), sprite_area);
+    } else if result.item.kind != "Character" && gallery.get(result.item.name).is_none() {
         frame.render_widget(
             Paragraph::new(
                 item_sprite(result)
@@ -658,6 +1042,9 @@ fn render_banner_art(frame: &mut Frame, area: Rect, banner: Banner) {
         Banner::Seraphine => Some("Seraphine, Verdant Oracle"),
         Banner::Vaughn => Some("Vaughn, Violet Oath"),
         Banner::Steven => Some("Steven, Azure Shade"),
+        Banner::Sergei => Some("Sergei, Winterfang"),
+        Banner::Saif => Some("Saif, Dune Sovereign"),
+        Banner::Standard => None,
         Banner::Weapon => None,
     };
     if let Some(sprite) = character.and_then(character_sprite) {
@@ -883,11 +1270,9 @@ fn detail(
             .border_style(Style::new().fg(Color::Rgb(38, 50, 80))),
         art_area,
     );
-    if result.item.kind == "Character" {
-        if portable_art && let Some(portrait) = gallery.get(result.item.name) {
-            frame.render_widget(TerminalPortrait::new(&portrait.detail), art_inner);
-        }
-    } else {
+    if portable_art && let Some(portrait) = gallery.get(result.item.name) {
+        frame.render_widget(TerminalPortrait::new(&portrait.detail), art_inner);
+    } else if result.item.kind != "Character" && gallery.get(result.item.name).is_none() {
         let art_lines: Vec<Line> = item_sprite(result)
             .iter()
             .enumerate()
@@ -1890,7 +2275,7 @@ fn item_profile(result: &WishResult) -> ItemProfile {
             title: "Dawn's Errant Knight",
             element: "Geo",
             weapon: "Sword",
-            lore: "Lumen left a ceremonial order to bring light to places omitted from royal maps. The little sun pinned to their cloak was forged from stone found at daybreak.",
+            lore: "Lumen left a ceremonial order to bring light to places omitted from royal maps. The little sun pinned to his cloak was forged from stone found at daybreak, and he carries its warmth to every forgotten road.",
             quote: "Dawn belongs to everyone. That is why I keep walking.",
             color: Color::Rgb(255, 190, 55),
             accent: Color::Rgb(255, 245, 165),
@@ -1986,6 +2371,116 @@ fn item_profile(result: &WishResult) -> ItemProfile {
                 "     ╱ ╱ ╲ ╲       ",
                 "    ❄       ❄      ",
             ],
+        },
+        "Saif, Dune Sovereign" => ItemProfile {
+            title: "Sovereign of Shifting Sands",
+            element: "Geo",
+            weapon: "Polearm",
+            lore: "Saif reads the desert as others read a courtly ledger: every dune records a bargain, every buried stone remembers a boundary. With a turn of his polearm he calls those old agreements into a spiraling wall of sand.",
+            quote: "Stone boasts of permanence. Sand knows better.",
+            color: Color::Rgb(239, 234, 187),
+            accent: Color::Rgb(85, 132, 103),
+            art: &[""],
+        },
+        "Pyrite, Gilded Step" => ItemProfile {
+            title: "The Gilded Step",
+            element: "Geo",
+            weapon: "Sword",
+            lore: "Pyrite trained among mountain couriers who measure skill by how little dust remains after a passage. Her gold eye catches the fault lines in stone, letting her cross a battlefield in one brilliant, blade-first dash.",
+            quote: "If you saw me move, I was being polite.",
+            color: Color::Rgb(235, 180, 55),
+            accent: Color::Rgb(255, 235, 155),
+            art: &[""],
+        },
+        "Jeanette, Tidemender" => ItemProfile {
+            title: "The Laughing Tidemender",
+            element: "Hydro",
+            weapon: "Bow",
+            lore: "Jeanette turns every expedition into a reunion waiting to happen. Her silver longbow draws restorative water from the air; even her arrows burst into bright ribbons that close wounds and lift weary hearts.",
+            quote: "Hold still, smile, and let the tide put you back together!",
+            color: Color::Rgb(65, 155, 255),
+            accent: GOLD,
+            art: &[""],
+        },
+        "Farah" => ItemProfile {
+            title: "Keeper of the Dune Ledger",
+            element: "Geo",
+            weapon: "Catalyst",
+            lore: "Farah preserves treaties on tablets of singing sandstone. She travels beside Saif when old borders stir, shaping the tablets into shelter while he turns the open desert against their foes.",
+            quote: "A promise survives when someone carries its weight.",
+            color: Color::Rgb(210, 184, 118),
+            accent: Color::Rgb(85, 132, 103),
+            art: &[""],
+        },
+        "Anya" => ItemProfile {
+            title: "Warden of the Warm Trail",
+            element: "Cryo",
+            weapon: "Sword",
+            lore: "Anya follows the marks Sergei leaves across the white frontier, tending travelers caught in the wake of the Winterfang. Her frost wards preserve warmth instead of stealing it.",
+            quote: "Cold is only cruel when no one knows the road home.",
+            color: Color::Rgb(150, 205, 245),
+            accent: Color::Rgb(225, 245, 255),
+            art: &[""],
+        },
+        "Rook" => ItemProfile {
+            title: "Breaker of Brass Giants",
+            element: "Electro",
+            weapon: "Gauntlet",
+            lore: "Rook dismantles abandoned war machines before scavengers can wake them. Each rescued gear joins his gauntlets, where captured current answers every impossible mechanism with a louder idea.",
+            quote: "Everything comes apart. The trick is making it useful afterward.",
+            color: Color::Rgb(190, 105, 255),
+            accent: Color::Rgb(215, 155, 75),
+            art: &[""],
+        },
+        "Kestrel" => ItemProfile {
+            title: "Wayfinder of the Open Gale",
+            element: "Anemo",
+            weapon: "Bow",
+            lore: "Kestrel charts roads by firing ribboned arrows into uncertain winds. Caravans trust the returning feathers: green means passage, white means shelter, and none means she has gone ahead to clear the danger herself.",
+            quote: "A road only ends when the wind stops asking.",
+            color: Color::Rgb(100, 220, 185),
+            accent: Color::Rgb(235, 230, 180),
+            art: &[""],
+        },
+        "Mako" => ItemProfile {
+            title: "Laughing Reefrunner",
+            element: "Hydro",
+            weapon: "Dual Blades",
+            lore: "Mako guides fishing crews through reefs that rearrange with the moon. His hooked blades turn the same currents that once threatened his village into swift steps and brighter stories.",
+            quote: "If the tide cheats, cheat faster.",
+            color: Color::Rgb(75, 165, 245),
+            accent: Color::Rgb(175, 235, 255),
+            art: &[""],
+        },
+        "Ysra" => ItemProfile {
+            title: "Marshal of Quiet Embers",
+            element: "Pyro",
+            weapon: "Polearm",
+            lore: "Ysra builds compact flame wards that conceal movement and sharpen elemental focus. Steven respects her disciplined silence; Wick respects that she always carries smoked biscuits.",
+            quote: "A controlled flame reveals only what I permit.",
+            color: Color::Rgb(255, 105, 45),
+            accent: Color::Rgb(85, 180, 255),
+            art: &[""],
+        },
+        "Dolma" => ItemProfile {
+            title: "Stone of the High Pass",
+            element: "Geo",
+            weapon: "Claymore",
+            lore: "Dolma repairs mountain roads with the same slab-edged blade she carries into battle. She has never hurried a crossing and has never lost a traveler entrusted to her care.",
+            quote: "The mountain is patient. So am I.",
+            color: Color::Rgb(220, 175, 80),
+            accent: Color::Rgb(165, 135, 105),
+            art: &[""],
+        },
+        "Corvin" => ItemProfile {
+            title: "Frost-Ring Interceptor",
+            element: "Cryo",
+            weapon: "Gauntlet",
+            lore: "Corvin learned to stop charging beasts without meeting force with force. Each precise frozen strike steals momentum until even the wildest opponent stands motionless before him.",
+            quote: "Speed is only useful while you still possess it.",
+            color: Color::Rgb(125, 195, 245),
+            accent: Color::Rgb(225, 245, 255),
+            art: &[""],
         },
         "Zephra" => ItemProfile {
             title: "Gale-Road Courier",

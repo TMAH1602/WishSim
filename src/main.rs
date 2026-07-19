@@ -23,6 +23,9 @@ enum BannerArg {
     Seraphine,
     Vaughn,
     Steven,
+    Sergei,
+    Saif,
+    Standard,
     Weapon,
 }
 
@@ -34,6 +37,9 @@ impl From<BannerArg> for Banner {
             BannerArg::Seraphine => Self::Seraphine,
             BannerArg::Vaughn => Self::Vaughn,
             BannerArg::Steven => Self::Steven,
+            BannerArg::Sergei => Self::Sergei,
+            BannerArg::Saif => Self::Saif,
+            BannerArg::Standard => Self::Standard,
             BannerArg::Weapon => Self::Weapon,
         }
     }
@@ -109,6 +115,13 @@ fn pull_plain(count: u8, seed: Option<u64>, banner: Banner) -> Result<()> {
             save.weapon_pity.fate_points,
             save.weapon_pity.path.name()
         );
+    } else if banner == Banner::Standard {
+        println!(
+            "Standard pity: {}/90  |  Fate: {}/1  |  Target: {}",
+            save.standard_pity.five_star,
+            save.standard_pity.fate_points,
+            save.standard_pity.path.name()
+        );
     } else {
         println!(
             "5-star pity: {}  |  4-star pity: {}",
@@ -148,6 +161,12 @@ fn show_stats() -> Result<()> {
         "Epitomized path: {} ({}/1 Fate)",
         save.weapon_pity.path.name(),
         save.weapon_pity.fate_points
+    );
+    println!("Standard pity: {}/90", save.standard_pity.five_star);
+    println!(
+        "Standard destiny: {} ({}/1 Fate)",
+        save.standard_pity.path.name(),
+        save.standard_pity.fate_points
     );
     Ok(())
 }

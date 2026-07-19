@@ -2,7 +2,21 @@
 
 All notable changes to WishSim will be documented here.
 
-## Unreleased
+## 0.4.0 - 2026-07-19
+
+- Replaced the two-item weapon-path toggle with a scrollable selector covering every limited signature, including an optional art preview.
+- Added a scrollable character archive with owned sprite thumbnails and obscured named records for unowned characters.
+- Added five four-star characters: Kestrel, Mako, Ysra, Dolma, and Corvin.
+
+- Added a grid-based limited five-star banner selector.
+- Added limited five-star Geo polearm user Saif and moved Sergei to the limited roster.
+- Added standard five-star characters Pyrite and Jeanette.
+- Added transparent pixel-art assets for every five-star and four-star weapon.
+- Corrected Lumen's lore to use masculine pronouns.
+- Added a selectable Standard Archive banner with independent pity and a one-point chosen-character Fate guarantee.
+- Added four-star characters Farah, Anya, and Rook with full transparent artwork and combat profiles.
+- Added signature five-star weapons for Seraphine, Vaughn, Steven, Sergei, and Saif.
+- Designated Ghostty as the primary supported terminal emulator while retaining Kitty protocol support and portable ANSI rendering.
 
 ## 0.3.1 - 2026-07-18
 

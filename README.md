@@ -1,6 +1,6 @@
 # WishSim
 
-A cinematic terminal wish simulator built in Rust with Ratatui and Crossterm. It includes four banners, animated star flights, five-star cutscenes, original full-color character portraits, inspectable inventory, ten-pull summaries, persistent pity, featured guarantees, history, and deterministic command-line pulls.
+A cinematic terminal wish simulator built in Rust with Ratatui and Crossterm. It includes a growing archive of limited and standard banners, animated star flights, five-star cutscenes, original full-color character and weapon art, inspectable inventory, ten-pull summaries, persistent pity, featured guarantees, history, and deterministic command-line pulls.
 
 WishSim uses original characters, weapons, lore, and artwork. It is an unofficial fan-made terminal game and is not affiliated with or endorsed by HoYoverse.
 
@@ -13,7 +13,7 @@ brew tap TMAH1602/wishsim
 brew install wishsim
 ```
 
-Then launch it with `wishsim`. Run it directly in Kitty or Ghostty for full-resolution character artwork; terminal multiplexers such as Zellij may block the graphics protocol.
+Then launch it with `wishsim`. **Ghostty is WishSim's primary supported terminal emulator** and the recommended environment for full-resolution artwork. Kitty is also supported through the same graphics protocol, while modern true-color terminals use the portable ANSI fallback. Terminal multiplexers such as Zellij may block protocol graphics.
 
 ### Download an archive
 
@@ -31,7 +31,7 @@ chmod +x wishsim
 ./wishsim
 ```
 
-On Windows, extract the ZIP and launch `wishsim.exe` from Windows Terminal. Kitty and Ghostty provide the richest presentation, but any modern true-color terminal should work.
+On Windows, extract the ZIP and launch `wishsim.exe` from Windows Terminal. Ghostty provides the primary tested presentation, Kitty is also supported, and any modern true-color terminal should work through the ANSI renderer.
 
 The included banner and item names are original. The probability model is inspired by familiar character-event wish systems: 0.6% base five-star rate, soft pity after pull 73, hard pity at 90, four-star-or-better within 10, and featured guarantees after losing a 50/50.
 
@@ -46,7 +46,10 @@ The interactive controls are shown on screen:
 - `1` or `Enter`: one wish
 - `0`: ten wishes
 - `←` / `→` on the home screen: change banners
-- `P` on the weapon banner: change the epitomized path (resets Fate)
+- `B`: open the limited five-star banner grid
+- `P` on the weapon banner: open the scrollable five-star weapon path list; `V` previews the highlighted weapon art and `Enter` confirms it (changing paths resets Fate)
+- `P` on the standard banner: change the selected standard character (resets Fate)
+- `C`: open the scrollable character archive; unowned characters retain their names but display as locked `?` records
 - `H`: history
 - `I`: inventory
 - `Space` or `Enter`: advance/skip an animation
@@ -73,7 +76,7 @@ Inventory deletion never changes pity or wish history. Every deletion, including
 
 Every character and weapon now has an initial combat-stat profile: CRIT DMG, CRIT RATE, ATK, DEF, SPD, ELEMENTAL ATK, HP, and POISE. These are visible on inspection and form the foundation for the planned 3v3 battle system.
 
-Kitty and Ghostty are detected automatically. Character portraits are sent directly through the Kitty graphics protocol supported by both terminals and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder or `kitten` helper is required. Run WishSim outside Zellij for protocol artwork.
+Ghostty is the primary supported terminal and is detected automatically. Character and weapon art is sent directly through the Kitty graphics protocol implemented by Ghostty; Kitty is also detected and supported. Other terminals fall back to terminal half-block rendering. Artwork is embedded in the executable, so no separate asset folder or `kitten` helper is required. Run WishSim outside Zellij for protocol artwork.
 
 If a shell or multiplexer replaces Ghostty's terminal markers, launch with `WISHSIM_GRAPHICS=ghostty wishsim` to force native artwork. Use `WISHSIM_GRAPHICS=ansi wishsim` to force the portable fallback.
 
@@ -86,6 +89,9 @@ cargo run -- pull --count 10 --banner kaelis
 cargo run -- pull --count 10 --banner seraphine
 cargo run -- pull --count 10 --banner vaughn
 cargo run -- pull --count 10 --banner steven
+cargo run -- pull --count 10 --banner sergei
+cargo run -- pull --count 10 --banner saif
+cargo run -- pull --count 10 --banner standard
 cargo run -- pull --count 10 --banner weapon
 cargo run -- stats
 cargo run -- reset
@@ -93,7 +99,7 @@ cargo run -- reset
 
 Seeded pulls are reproducible and deliberately do not modify the save file.
 
-The three character-event banners share pity and featured guarantees. The weapon banner has its own 80-pull hard pity, a 75% featured check, two featured weapons, and a one-point epitomized path: missing the selected weapon grants one Fate Point, making the next five-star the selected weapon. This is an original, simplified system inspired by modern weapon-banner mechanics.
+All limited character-event banners share pity and featured guarantees. The Standard Archive has independent pity and a selectable character Fate path. The weapon banner has its own 80-pull hard pity, a 75% featured check, a scrollable selection of limited signatures, and a one-point epitomized path: missing the selected weapon grants one Fate Point, making the next five-star the selected weapon. This is an original, simplified system inspired by modern weapon-banner mechanics.
 
 ## Learn the code
 

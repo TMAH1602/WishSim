@@ -100,6 +100,12 @@ Banner enum additions must be handled exhaustively in:
 
 Character-event banners share the same character pity and guarantees. A new banner must not accidentally create separate pity unless the design explicitly changes.
 
+The Standard Archive is the deliberate exception: it has separate persisted pity and a selected-character Fate path. Pulling a different standard five-star grants one Fate point; the next standard five-star is the selected character and consumes the point. Changing the selected standard character clears its Fate point, matching the weapon-path reset convention.
+
+Weapon paths use the shared scrollable `WeaponSelect` phase. Every limited signature must be present in `WeaponPath::ALL`, `weapon_for_path()`, the raster registries, and the selector preview. Changing the confirmed path clears weapon Fate; merely browsing or previewing does not mutate saved state.
+
+The Character Archive uses the canonical character catalog rather than a parallel UI-only roster. Owned records render the shared raster portrait at archive scale. Unowned records preserve the canonical name but replace the portrait and rarity with a dim question-mark lock treatment; the UI must never infer ownership from wish history when inventory is authoritative.
+
 ### Characters and weapons
 
 - Five-star characters use a full display name plus epithet, such as `Astraea, Starbound`.
@@ -150,6 +156,8 @@ Do not replace `FilterType::Nearest` with smoothing filters. Do not pre-crop so 
 
 Kitty and Ghostty receive the original embedded PNG bytes through direct Kitty graphics-protocol escape sequences. ANSI fallback uses the pre-rasterized `TerminalRaster`. Do not draw the ANSI portrait underneath a protocol placement: transparent PNG regions must reveal only the panel background. Both rendering modes must be validated.
 
+Ghostty is the primary supported terminal emulator and the first native-graphics environment to validate for releases. Kitty remains a supported protocol peer, and portable ANSI remains required rather than becoming an optional or degraded code path.
+
 ## Adding a weapon class
 
 A new weapon class needs more than a catalog string:
@@ -162,7 +170,7 @@ A new weapon class needs more than a catalog string:
 - Verify inventory columns remain aligned with the longer kind name.
 - Verify weapon pulls use weapon pity and the intended four-star pool.
 
-If raster weapon art is later introduced, create one reusable weapon registry and rendering path rather than partially mixing bitmap and ASCII weapons.
+Raster weapon art uses the same embedded gallery and protocol registry as character portraits for every four-star and five-star weapon. Three-star weapons retain the symbolic fallback. Add future raster weapons to both shared consumers and the transparency/registry tests; do not create a separate inventory-only renderer.
 
 ## Inventory feature conventions
 

@@ -1,7 +1,9 @@
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use crate::model::{Banner, Item, Rarity, SaveData, SavedWish, Stats, WeaponPath, WishResult};
+use crate::model::{
+    Banner, Item, Rarity, SaveData, SavedWish, StandardPath, Stats, WeaponPath, WishResult,
+};
 
 pub const ASTRAEA: Item = Item {
     name: "Astraea, Starbound",
@@ -26,6 +28,41 @@ pub const VAUGHN: Item = Item {
 pub const STEVEN: Item = Item {
     name: "Steven, Azure Shade",
     kind: "Character",
+    rarity: Rarity::Five,
+};
+pub const SERGEI: Item = Item {
+    name: "Sergei, Winterfang",
+    kind: "Character",
+    rarity: Rarity::Five,
+};
+pub const SAIF: Item = Item {
+    name: "Saif, Dune Sovereign",
+    kind: "Character",
+    rarity: Rarity::Five,
+};
+pub const DREAMWOOD_RECURVE: Item = Item {
+    name: "Dreamwood Recurve",
+    kind: "Bow",
+    rarity: Rarity::Five,
+};
+pub const OATHBREAKER_THUNDER: Item = Item {
+    name: "Oathbreaker Thunder",
+    kind: "Claymore",
+    rarity: Rarity::Five,
+};
+pub const VEILFIRE_SUTRA: Item = Item {
+    name: "Veilfire Sutra",
+    kind: "Catalyst",
+    rarity: Rarity::Five,
+};
+pub const WHITE_HUNT_RELIQUARY: Item = Item {
+    name: "White Hunt Reliquary",
+    kind: "Catalyst",
+    rarity: Rarity::Five,
+};
+pub const SANDSWORN_DOMINION: Item = Item {
+    name: "Sandsworn Dominion",
+    kind: "Polearm",
     rarity: Rarity::Five,
 };
 pub const POLARIS_EDGE: Item = Item {
@@ -56,7 +93,12 @@ const STANDARD_FIVE_CHARACTERS: &[Item] = &[
         rarity: Rarity::Five,
     },
     Item {
-        name: "Sergei, Winterfang",
+        name: "Pyrite, Gilded Step",
+        kind: "Character",
+        rarity: Rarity::Five,
+    },
+    Item {
+        name: "Jeanette, Tidemender",
         kind: "Character",
         rarity: Rarity::Five,
     },
@@ -104,7 +146,55 @@ const FEATURED_FOUR: &[Item] = &[
         kind: "Character",
         rarity: Rarity::Four,
     },
+    Item {
+        name: "Farah",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Anya",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Rook",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Kestrel",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Mako",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Ysra",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Dolma",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Corvin",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
 ];
+
+pub fn all_characters() -> Vec<Item> {
+    [ASTRAEA, KAELIS, SERAPHINE, VAUGHN, STEVEN, SERGEI, SAIF]
+        .into_iter()
+        .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
+        .chain(FEATURED_FOUR.iter().copied())
+        .collect()
+}
 const FEATURED_FOUR_WEAPONS: &[Item] = &[
     Item {
         name: "Moonlit Longbow",
@@ -184,6 +274,9 @@ pub fn featured_character(banner: Banner) -> Item {
         Banner::Seraphine => SERAPHINE,
         Banner::Vaughn => VAUGHN,
         Banner::Steven => STEVEN,
+        Banner::Sergei => SERGEI,
+        Banner::Saif => SAIF,
+        Banner::Standard => ASTRAEA,
         Banner::Weapon => ASTRAEA,
     }
 }
@@ -195,6 +288,13 @@ pub fn catalog_item(name: &str) -> Option<Item> {
         SERAPHINE,
         VAUGHN,
         STEVEN,
+        SERGEI,
+        SAIF,
+        DREAMWOOD_RECURVE,
+        OATHBREAKER_THUNDER,
+        VEILFIRE_SUTRA,
+        WHITE_HUNT_RELIQUARY,
+        SANDSWORN_DOMINION,
         POLARIS_EDGE,
         NOVA_GRIMOIRE,
     ]
@@ -210,18 +310,30 @@ pub fn catalog_item(name: &str) -> Option<Item> {
 
 pub fn item_element(name: &str) -> &'static str {
     match name {
-        "Astraea, Starbound" | "Sergei, Winterfang" | "Neris" | "Winter's Requiem" => "Cryo",
-        "Lumen" => "Geo",
+        "Astraea, Starbound"
+        | "Sergei, Winterfang"
+        | "Neris"
+        | "Anya"
+        | "Corvin"
+        | "Winter's Requiem"
+        | "White Hunt Reliquary" => "Cryo",
+        "Lumen"
+        | "Saif, Dune Sovereign"
+        | "Pyrite, Gilded Step"
+        | "Farah"
+        | "Dolma"
+        | "Sandsworn Dominion" => "Geo",
         "Kaelis, Ashen Vanguard"
         | "Orin, Keeper of Embers"
         | "Cinder, Forgeheart"
         | "Steven, Azure Shade"
         | "Brikka"
+        | "Ysra"
         | "Twin Cinderfangs" => "Pyro",
         "Seraphine, Verdant Oracle" | "Thorne" => "Dendro",
-        "Vaughn, Violet Oath" | "Veyra, Stormseeker" => "Electro",
-        "Mira" => "Hydro",
-        "Zephra" | "Galegrip Knuckles" => "Anemo",
+        "Vaughn, Violet Oath" | "Veyra, Stormseeker" | "Rook" | "Oathbreaker Thunder" => "Electro",
+        "Mira" | "Jeanette, Tidemender" | "Mako" => "Hydro",
+        "Zephra" | "Kestrel" | "Galegrip Knuckles" => "Anemo",
         _ => "Unaligned",
     }
 }
@@ -251,6 +363,17 @@ pub fn item_stats(item: Item) -> Stats {
                 hp: 840,
                 poise: 158,
             },
+            "Saif, Dune Sovereign" => Stats::character(item.rarity, 146, 128, 104, 1160, 126),
+            "Pyrite, Gilded Step" => Stats::character(item.rarity, 139, 92, 158, 1010, 72),
+            "Jeanette, Tidemender" => Stats::character(item.rarity, 96, 104, 112, 1420, 88),
+            "Farah" => Stats::character(item.rarity, 94, 118, 98, 1040, 112),
+            "Anya" => Stats::character(item.rarity, 101, 106, 112, 1100, 98),
+            "Rook" => Stats::character(item.rarity, 126, 86, 119, 960, 91),
+            "Kestrel" => Stats::character(item.rarity, 113, 78, 132, 900, 68),
+            "Mako" => Stats::character(item.rarity, 124, 82, 125, 940, 76),
+            "Ysra" => Stats::character(item.rarity, 96, 101, 105, 1060, 104),
+            "Dolma" => Stats::character(item.rarity, 108, 132, 72, 1210, 142),
+            "Corvin" => Stats::character(item.rarity, 116, 94, 118, 970, 110),
             "Zephra" => Stats::character(item.rarity, 112, 78, 128, 890, 70),
             "Neris" => Stats::character(item.rarity, 121, 82, 106, 930, 82),
             "Brikka" => Stats::character(item.rarity, 126, 91, 101, 980, 96),
@@ -315,11 +438,51 @@ impl WishEngine {
     }
 
     pub fn pull(&mut self, save: &mut SaveData, banner: Banner) -> WishResult {
-        if banner == Banner::Weapon {
-            self.pull_weapon(save)
-        } else {
-            self.pull_character(save, banner)
+        match banner {
+            Banner::Weapon => self.pull_weapon(save),
+            Banner::Standard => self.pull_standard(save),
+            _ => self.pull_character(save, banner),
         }
+    }
+
+    fn pull_standard(&mut self, save: &mut SaveData) -> WishResult {
+        let pity = &mut save.standard_pity;
+        let five_chance = if pity.five_star >= 89 {
+            1.0
+        } else if pity.five_star >= 73 {
+            0.006 + 0.06 * f64::from(pity.five_star - 72)
+        } else {
+            0.006
+        };
+        let roll: f64 = self.rng.random();
+        let (item, targeted) = if roll < five_chance {
+            let target = standard_character(pity.path);
+            let item = if pity.fate_points >= 1 {
+                target
+            } else {
+                *self.choose(STANDARD_FIVE_CHARACTERS)
+            };
+            if item.name == target.name {
+                pity.fate_points = 0;
+            } else {
+                pity.fate_points = 1;
+            }
+            (item, item.name == target.name)
+        } else if pity.four_star >= 9 || roll < five_chance + 0.051 {
+            (*self.choose(FEATURED_FOUR), false)
+        } else {
+            pity.five_star += 1;
+            pity.four_star += 1;
+            (*self.choose(THREE_STAR), false)
+        };
+        if item.rarity == Rarity::Five {
+            pity.five_star = 0;
+            pity.four_star += 1;
+        } else if item.rarity == Rarity::Four {
+            pity.five_star += 1;
+            pity.four_star = 0;
+        }
+        Self::record(save, item, targeted)
     }
 
     fn pull_character(&mut self, save: &mut SaveData, banner: Banner) -> WishResult {
@@ -444,12 +607,27 @@ pub const fn weapon_for_path(path: WeaponPath) -> Item {
     match path {
         WeaponPath::PolarisEdge => POLARIS_EDGE,
         WeaponPath::NovaGrimoire => NOVA_GRIMOIRE,
+        WeaponPath::DreamwoodRecurve => DREAMWOOD_RECURVE,
+        WeaponPath::OathbreakerThunder => OATHBREAKER_THUNDER,
+        WeaponPath::VeilfireSutra => VEILFIRE_SUTRA,
+        WeaponPath::WhiteHuntReliquary => WHITE_HUNT_RELIQUARY,
+        WeaponPath::SandswornDominion => SANDSWORN_DOMINION,
+    }
+}
+
+pub const fn standard_character(path: StandardPath) -> Item {
+    match path {
+        StandardPath::Veyra => STANDARD_FIVE_CHARACTERS[0],
+        StandardPath::Orin => STANDARD_FIVE_CHARACTERS[1],
+        StandardPath::Cinder => STANDARD_FIVE_CHARACTERS[2],
+        StandardPath::Pyrite => STANDARD_FIVE_CHARACTERS[3],
+        StandardPath::Jeanette => STANDARD_FIVE_CHARACTERS[4],
     }
 }
 const fn other_weapon(path: WeaponPath) -> Item {
     match path {
         WeaponPath::PolarisEdge => NOVA_GRIMOIRE,
-        WeaponPath::NovaGrimoire => POLARIS_EDGE,
+        _ => POLARIS_EDGE,
     }
 }
 
@@ -506,6 +684,36 @@ mod tests {
         assert_eq!(s.weapon_pity.fate_points, 0);
     }
     #[test]
+    fn standard_fate_point_guarantees_selected_character() {
+        let mut save = SaveData::default();
+        save.standard_pity.five_star = 89;
+        save.standard_pity.fate_points = 1;
+        save.standard_pity.path = StandardPath::Jeanette;
+        let result = WishEngine::seeded(4).pull(&mut save, Banner::Standard);
+        assert_eq!(result.item.name, "Jeanette, Tidemender");
+        assert_eq!(save.standard_pity.fate_points, 0);
+    }
+
+    #[test]
+    fn off_target_standard_character_awards_fate_point() {
+        let mut observed = false;
+        for seed in 0..100 {
+            let mut save = SaveData::default();
+            save.standard_pity.five_star = 89;
+            save.standard_pity.path = StandardPath::Jeanette;
+            let result = WishEngine::seeded(seed).pull(&mut save, Banner::Standard);
+            if result.item.name != "Jeanette, Tidemender" {
+                assert_eq!(save.standard_pity.fate_points, 1);
+                observed = true;
+                break;
+            }
+        }
+        assert!(
+            observed,
+            "seed range produced no off-target standard character"
+        );
+    }
+    #[test]
     fn seeded_pulls_are_reproducible() {
         let mut a = SaveData::default();
         let mut b = SaveData::default();
@@ -532,6 +740,17 @@ mod tests {
             ("Zephra", "Anemo", "Character"),
             ("Neris", "Cryo", "Character"),
             ("Brikka", "Pyro", "Character"),
+            ("Saif, Dune Sovereign", "Geo", "Character"),
+            ("Pyrite, Gilded Step", "Geo", "Character"),
+            ("Jeanette, Tidemender", "Hydro", "Character"),
+            ("Farah", "Geo", "Character"),
+            ("Anya", "Cryo", "Character"),
+            ("Rook", "Electro", "Character"),
+            ("Kestrel", "Anemo", "Character"),
+            ("Mako", "Hydro", "Character"),
+            ("Ysra", "Pyro", "Character"),
+            ("Dolma", "Geo", "Character"),
+            ("Corvin", "Cryo", "Character"),
             ("Galegrip Knuckles", "Anemo", "Gauntlet"),
             ("Winter's Requiem", "Cryo", "Scythe"),
             ("Twin Cinderfangs", "Pyro", "Dual Blades"),
@@ -541,6 +760,24 @@ mod tests {
             assert_eq!(item.kind, kind, "wrong item type for {name}");
         }
         assert_eq!(ASTRAEA.element(), "Cryo");
+        assert_eq!(featured_character(Banner::Sergei).name, SERGEI.name);
+        assert_eq!(featured_character(Banner::Saif).name, SAIF.name);
+        for (weapon, kind) in [
+            ("Dreamwood Recurve", "Bow"),
+            ("Oathbreaker Thunder", "Claymore"),
+            ("Veilfire Sutra", "Catalyst"),
+            ("White Hunt Reliquary", "Catalyst"),
+            ("Sandsworn Dominion", "Polearm"),
+        ] {
+            let item = catalog_item(weapon).unwrap();
+            assert_eq!(item.rarity, Rarity::Five);
+            assert_eq!(item.kind, kind);
+        }
+        assert!(
+            !STANDARD_FIVE_CHARACTERS
+                .iter()
+                .any(|item| item.name == SERGEI.name)
+        );
 
         let sergei = catalog_item("Sergei, Winterfang").unwrap().stats();
         assert!(sergei.atk > sergei.def);
@@ -557,5 +794,35 @@ mod tests {
         assert!(steven.atk < 110);
         assert!(steven.def < 80);
         assert!(steven.hp < 900);
+
+        let characters = all_characters();
+        assert_eq!(characters.len(), 26);
+        let mut names = characters.iter().map(|item| item.name).collect::<Vec<_>>();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), characters.len());
+    }
+
+    #[test]
+    fn every_limited_signature_is_a_selectable_weapon_path() {
+        let names = WeaponPath::ALL
+            .iter()
+            .map(|path| weapon_for_path(*path).name)
+            .collect::<Vec<_>>();
+        assert_eq!(names.len(), 7);
+        for signature in [
+            "Dreamwood Recurve",
+            "Oathbreaker Thunder",
+            "Veilfire Sutra",
+            "White Hunt Reliquary",
+            "Sandsworn Dominion",
+        ] {
+            assert!(names.contains(&signature));
+            assert!(
+                !STANDARD_FIVE_WEAPONS
+                    .iter()
+                    .any(|item| item.name == signature)
+            );
+        }
     }
 }

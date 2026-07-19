@@ -99,6 +99,34 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Zephra" => include_bytes!("../assets/characters/zephra.png"),
         "Neris" => include_bytes!("../assets/characters/neris.png"),
         "Brikka" => include_bytes!("../assets/characters/brikka.png"),
+        "Saif, Dune Sovereign" => include_bytes!("../assets/characters/saif.png"),
+        "Pyrite, Gilded Step" => include_bytes!("../assets/characters/pyrite.png"),
+        "Jeanette, Tidemender" => include_bytes!("../assets/characters/jeanette.png"),
+        "Polaris Edge" => include_bytes!("../assets/weapons/polaris_edge.png"),
+        "Nova Grimoire" => include_bytes!("../assets/weapons/nova_grimoire.png"),
+        "Celestial Atlas" => include_bytes!("../assets/weapons/celestial_atlas.png"),
+        "Wolfsong Claymore" => include_bytes!("../assets/weapons/wolfsong_claymore.png"),
+        "Moonlit Longbow" => include_bytes!("../assets/weapons/moonlit_longbow.png"),
+        "Sage's Codex" => include_bytes!("../assets/weapons/sages_codex.png"),
+        "Ironwind Blade" => include_bytes!("../assets/weapons/ironwind_blade.png"),
+        "Galegrip Knuckles" => include_bytes!("../assets/weapons/galegrip_knuckles.png"),
+        "Winter's Requiem" => include_bytes!("../assets/weapons/winters_requiem.png"),
+        "Twin Cinderfangs" => include_bytes!("../assets/weapons/twin_cinderfangs.png"),
+        "Duskward Spear" => include_bytes!("../assets/weapons/duskward_spear.png"),
+        "Bellflower Greatsword" => include_bytes!("../assets/weapons/bellflower_greatsword.png"),
+        "Farah" => include_bytes!("../assets/characters/farah.png"),
+        "Anya" => include_bytes!("../assets/characters/anya.png"),
+        "Rook" => include_bytes!("../assets/characters/rook.png"),
+        "Kestrel" => include_bytes!("../assets/characters/kestrel.png"),
+        "Mako" => include_bytes!("../assets/characters/mako.png"),
+        "Ysra" => include_bytes!("../assets/characters/ysra.png"),
+        "Dolma" => include_bytes!("../assets/characters/dolma.png"),
+        "Corvin" => include_bytes!("../assets/characters/corvin.png"),
+        "Dreamwood Recurve" => include_bytes!("../assets/weapons/dreamwood_recurve.png"),
+        "Oathbreaker Thunder" => include_bytes!("../assets/weapons/oathbreaker_thunder.png"),
+        "Veilfire Sutra" => include_bytes!("../assets/weapons/veilfire_sutra.png"),
+        "White Hunt Reliquary" => include_bytes!("../assets/weapons/white_hunt_reliquary.png"),
+        "Sandsworn Dominion" => include_bytes!("../assets/weapons/sandsworn_dominion.png"),
         _ => return None,
     })
 }
@@ -108,7 +136,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_character_has_protocol_portrait_bytes() {
+    fn every_raster_item_has_protocol_portrait_bytes() {
         for name in [
             "Astraea, Starbound",
             "Kaelis, Ashen Vanguard",
@@ -125,10 +153,38 @@ mod tests {
             "Zephra",
             "Neris",
             "Brikka",
+            "Saif, Dune Sovereign",
+            "Pyrite, Gilded Step",
+            "Jeanette, Tidemender",
+            "Polaris Edge",
+            "Nova Grimoire",
+            "Celestial Atlas",
+            "Wolfsong Claymore",
+            "Moonlit Longbow",
+            "Sage's Codex",
+            "Ironwind Blade",
+            "Galegrip Knuckles",
+            "Winter's Requiem",
+            "Twin Cinderfangs",
+            "Duskward Spear",
+            "Bellflower Greatsword",
+            "Farah",
+            "Anya",
+            "Rook",
+            "Kestrel",
+            "Mako",
+            "Ysra",
+            "Dolma",
+            "Corvin",
+            "Dreamwood Recurve",
+            "Oathbreaker Thunder",
+            "Veilfire Sutra",
+            "White Hunt Reliquary",
+            "Sandsworn Dominion",
         ] {
             assert!(
                 portrait_bytes(name).is_some(),
-                "missing Kitty portrait for {name}"
+                "missing protocol artwork for {name}"
             );
         }
     }

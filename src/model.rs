@@ -117,16 +117,32 @@ pub enum Banner {
     Seraphine,
     Vaughn,
     Steven,
+    Sergei,
+    Saif,
+    Standard,
     Weapon,
 }
 
 impl Banner {
-    pub const ALL: [Self; 6] = [
+    pub const SELECTOR: [Self; 8] = [
         Self::Astraea,
         Self::Kaelis,
         Self::Seraphine,
         Self::Vaughn,
         Self::Steven,
+        Self::Sergei,
+        Self::Saif,
+        Self::Standard,
+    ];
+    pub const ALL: [Self; 9] = [
+        Self::Astraea,
+        Self::Kaelis,
+        Self::Seraphine,
+        Self::Vaughn,
+        Self::Steven,
+        Self::Sergei,
+        Self::Saif,
+        Self::Standard,
         Self::Weapon,
     ];
 
@@ -137,7 +153,42 @@ impl Banner {
             Self::Seraphine => "Whispers in Bloom",
             Self::Vaughn => "Violet Oath Eternal",
             Self::Steven => "Veilfire Covenant",
+            Self::Sergei => "Winterfang's Vigil",
+            Self::Saif => "Sovereign of Shifting Sands",
+            Self::Standard => "The Everlasting Archive",
             Self::Weapon => "Incarnate Armaments",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StandardPath {
+    #[default]
+    Veyra,
+    Orin,
+    Cinder,
+    Pyrite,
+    Jeanette,
+}
+
+impl StandardPath {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Veyra => "Veyra, Stormseeker",
+            Self::Orin => "Orin, Keeper of Embers",
+            Self::Cinder => "Cinder, Forgeheart",
+            Self::Pyrite => "Pyrite, Gilded Step",
+            Self::Jeanette => "Jeanette, Tidemender",
+        }
+    }
+
+    pub const fn next(self) -> Self {
+        match self {
+            Self::Veyra => Self::Orin,
+            Self::Orin => Self::Cinder,
+            Self::Cinder => Self::Pyrite,
+            Self::Pyrite => Self::Jeanette,
+            Self::Jeanette => Self::Veyra,
         }
     }
 }
@@ -147,20 +198,32 @@ pub enum WeaponPath {
     #[default]
     PolarisEdge,
     NovaGrimoire,
+    DreamwoodRecurve,
+    OathbreakerThunder,
+    VeilfireSutra,
+    WhiteHuntReliquary,
+    SandswornDominion,
 }
 
 impl WeaponPath {
+    pub const ALL: [Self; 7] = [
+        Self::PolarisEdge,
+        Self::NovaGrimoire,
+        Self::DreamwoodRecurve,
+        Self::OathbreakerThunder,
+        Self::VeilfireSutra,
+        Self::WhiteHuntReliquary,
+        Self::SandswornDominion,
+    ];
     pub const fn name(self) -> &'static str {
         match self {
             Self::PolarisEdge => "Polaris Edge",
             Self::NovaGrimoire => "Nova Grimoire",
-        }
-    }
-
-    pub const fn toggled(self) -> Self {
-        match self {
-            Self::PolarisEdge => Self::NovaGrimoire,
-            Self::NovaGrimoire => Self::PolarisEdge,
+            Self::DreamwoodRecurve => "Dreamwood Recurve",
+            Self::OathbreakerThunder => "Oathbreaker Thunder",
+            Self::VeilfireSutra => "Veilfire Sutra",
+            Self::WhiteHuntReliquary => "White Hunt Reliquary",
+            Self::SandswornDominion => "Sandsworn Dominion",
         }
     }
 }
@@ -187,9 +250,19 @@ pub struct WeaponPityState {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
+pub struct StandardPityState {
+    pub five_star: u8,
+    pub four_star: u8,
+    pub fate_points: u8,
+    pub path: StandardPath,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SaveData {
     pub pity: PityState,
     pub weapon_pity: WeaponPityState,
+    pub standard_pity: StandardPityState,
     pub total_wishes: u64,
     pub inventory: BTreeMap<String, u32>,
     pub history: Vec<SavedWish>,
