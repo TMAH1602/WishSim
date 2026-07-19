@@ -13,7 +13,7 @@ brew tap TMAH1602/wishsim
 brew install wishsim
 ```
 
-Then launch it with `wishsim`. Run it directly in Kitty for full-resolution character artwork; terminal multiplexers such as Zellij may block Kitty's graphics protocol.
+Then launch it with `wishsim`. Run it directly in Kitty or Ghostty for full-resolution character artwork; terminal multiplexers such as Zellij may block the graphics protocol.
 
 ### Download an archive
 
@@ -31,7 +31,7 @@ chmod +x wishsim
 ./wishsim
 ```
 
-On Windows, extract the ZIP and launch `wishsim.exe` from Windows Terminal. Kitty provides the richest presentation, but any modern true-color terminal should work.
+On Windows, extract the ZIP and launch `wishsim.exe` from Windows Terminal. Kitty and Ghostty provide the richest presentation, but any modern true-color terminal should work.
 
 The included banner and item names are original. The probability model is inspired by familiar character-event wish systems: 0.6% base five-star rate, soft pity after pull 73, hard pity at 90, four-star-or-better within 10, and featured guarantees after losing a 50/50.
 
@@ -73,7 +73,9 @@ Inventory deletion never changes pity or wish history. Every deletion, including
 
 Every character and weapon now has an initial combat-stat profile: CRIT DMG, CRIT RATE, ATK, DEF, SPD, ELEMENTAL ATK, HP, and POISE. These are visible on inspection and form the foundation for the planned 3v3 battle system.
 
-Kitty is detected automatically. Character portraits use Kitty's graphics protocol when available and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder is needed beside a release binary. Run WishSim outside Zellij for native Kitty artwork.
+Kitty and Ghostty are detected automatically. Character portraits are sent directly through the Kitty graphics protocol supported by both terminals and fall back to terminal half-block rendering elsewhere. Portraits are embedded in the executable, so no separate asset folder or `kitten` helper is required. Run WishSim outside Zellij for protocol artwork.
+
+If a shell or multiplexer replaces Ghostty's terminal markers, launch with `WISHSIM_GRAPHICS=ghostty wishsim` to force native artwork. Use `WISHSIM_GRAPHICS=ansi wishsim` to force the portable fallback.
 
 ## CLI mode
 

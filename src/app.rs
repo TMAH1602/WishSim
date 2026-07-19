@@ -8,7 +8,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 
 use crate::{
     art::CharacterGallery,
-    kitty::KittyRenderer,
+    kitty::GraphicsRenderer,
     model::{Banner, SaveData, WishResult},
     simulation::WishEngine,
     storage, ui,
@@ -21,7 +21,7 @@ const FIVE_STAR_INTRO_TIME: Duration = Duration::from_millis(3_400);
 pub struct App {
     pub save: SaveData,
     pub phase: Phase,
-    pub kitty: bool,
+    pub graphics: bool,
     pub banner: Banner,
     pub gallery: CharacterGallery,
     pub confirm_quit: bool,
@@ -121,8 +121,7 @@ pub fn run() -> Result<()> {
     let mut app = App {
         save: storage::load()?,
         phase: Phase::Home,
-        kitty: std::env::var_os("KITTY_WINDOW_ID").is_some()
-            || std::env::var("TERM").is_ok_and(|v| v.contains("kitty")),
+        graphics: supports_graphics_protocol(),
         banner: Banner::Astraea,
         gallery: CharacterGallery::load()?,
         confirm_quit: false,
@@ -133,7 +132,7 @@ pub fn run() -> Result<()> {
         should_quit: false,
     };
 
-    let mut kitty_renderer = KittyRenderer::default();
+    let mut graphics_renderer = GraphicsRenderer::default();
     ratatui::run(|terminal| -> Result<()> {
         while !app.should_quit {
             let now = Instant::now();
@@ -143,8 +142,8 @@ pub fn run() -> Result<()> {
                 drawn_area = frame.area();
                 ui::render(frame, &app, now);
             })?;
-            if app.kitty {
-                kitty_renderer.sync(ui::kitty_portrait(&app, drawn_area))?;
+            if app.graphics {
+                graphics_renderer.sync(ui::graphics_portrait(&app, drawn_area))?;
             }
 
             let timeout = if app.is_animating() {
@@ -159,10 +158,51 @@ pub fn run() -> Result<()> {
                 app.handle_key(key.code)?;
             }
         }
-        kitty_renderer.clear()?;
+        graphics_renderer.clear()?;
         Ok(())
     })?;
     Ok(())
+}
+
+fn supports_graphics_protocol() -> bool {
+    if let Some(enabled) = graphics_override(std::env::var("WISHSIM_GRAPHICS").ok().as_deref()) {
+        return enabled;
+    }
+    let term = std::env::var("TERM")
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let term_program = std::env::var("TERM_PROGRAM")
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    detects_graphics_protocol(
+        &term,
+        &term_program,
+        std::env::var_os("KITTY_WINDOW_ID").is_some(),
+        std::env::var_os("GHOSTTY_RESOURCES_DIR").is_some()
+            || std::env::var_os("GHOSTTY_BIN_DIR").is_some(),
+    )
+}
+
+fn graphics_override(value: Option<&str>) -> Option<bool> {
+    value.and_then(|value| match value.to_ascii_lowercase().as_str() {
+        "1" | "on" | "true" | "kitty" | "ghostty" => Some(true),
+        "0" | "off" | "false" | "ansi" => Some(false),
+        _ => None,
+    })
+}
+
+fn detects_graphics_protocol(
+    term: &str,
+    term_program: &str,
+    kitty_window: bool,
+    ghostty_environment: bool,
+) -> bool {
+    kitty_window
+        || ghostty_environment
+        || term.contains("kitty")
+        || term.contains("ghostty")
+        || term_program.contains("kitty")
+        || term_program.contains("ghostty")
 }
 
 impl App {
@@ -521,5 +561,35 @@ mod tests {
         assert_eq!(save.inventory.get("Quartz Spear"), Some(&2));
         assert_eq!(save.pity.five_star, 47);
         assert_eq!(save.total_wishes, 99);
+    }
+
+    #[test]
+    fn detects_kitty_and_ghostty_graphics_terminals() {
+        assert!(detects_graphics_protocol("xterm-kitty", "", false, false));
+        assert!(detects_graphics_protocol("xterm-ghostty", "", false, false));
+        assert!(detects_graphics_protocol(
+            "xterm-256color",
+            "ghostty",
+            false,
+            false
+        ));
+        assert!(detects_graphics_protocol("xterm-256color", "", true, false));
+        assert!(detects_graphics_protocol("xterm-256color", "", false, true));
+        assert!(!detects_graphics_protocol(
+            "xterm-256color",
+            "apple_terminal",
+            false,
+            false
+        ));
+    }
+
+    #[test]
+    fn graphics_override_accepts_native_and_ansi_modes() {
+        assert_eq!(graphics_override(Some("ghostty")), Some(true));
+        assert_eq!(graphics_override(Some("1")), Some(true));
+        assert_eq!(graphics_override(Some("ansi")), Some(false));
+        assert_eq!(graphics_override(Some("0")), Some(false));
+        assert_eq!(graphics_override(Some("unexpected")), None);
+        assert_eq!(graphics_override(None), None);
     }
 }

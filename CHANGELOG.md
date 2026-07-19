@@ -4,6 +4,13 @@ All notable changes to WishSim will be documented here.
 
 ## Unreleased
 
+## 0.3.1 - 2026-07-18
+
+- Added native full-resolution character artwork in Ghostty through the Kitty graphics protocol.
+- Removed the portable half-block portrait beneath full-resolution protocol artwork.
+- Removed the runtime dependency on the external `kitten icat` helper.
+- Added explicit native/ANSI graphics overrides for environments that replace terminal identity markers.
+
 ## 0.3.0 - 2026-07-18
 
 - Added inventory sorting by name, rarity, item type, and element.

@@ -20,7 +20,7 @@ const PURPLE: Color = Color::Rgb(198, 120, 255);
 const BLUE: Color = Color::Rgb(90, 180, 255);
 const DIM: Color = Color::Rgb(100, 115, 145);
 
-pub fn kitty_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
+pub fn graphics_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
     if app.confirm_quit || area.width < 80 || area.height < 34 {
         return None;
     }
@@ -102,6 +102,7 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
                     &result,
                     app.save.inventory.get(name).copied(),
                     &app.gallery,
+                    !app.graphics,
                 );
             }
         }
@@ -127,6 +128,7 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
             *index,
             results.len(),
             &app.gallery,
+            !app.graphics,
         ),
         Phase::FiveStarIntro {
             started,
@@ -139,9 +141,13 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
             *index,
         ),
         Phase::Summary { results, selected } => summary(frame, results, *selected),
-        Phase::Detail { results, selected } => {
-            detail(frame, &results[*selected], None, &app.gallery)
-        }
+        Phase::Detail { results, selected } => detail(
+            frame,
+            &results[*selected],
+            None,
+            &app.gallery,
+            !app.graphics,
+        ),
     }
     if app.confirm_quit {
         confirm_quit(frame);
@@ -345,8 +351,8 @@ fn home(frame: &mut Frame, app: &App) {
         actions,
     );
 
-    let mode = if app.kitty {
-        "KITTY ENHANCED ✦"
+    let mode = if app.graphics {
+        "PROTOCOL GRAPHICS ✦"
     } else {
         "PORTABLE ANSI"
     };
@@ -468,6 +474,7 @@ fn reveal(
     index: usize,
     total: usize,
     gallery: &CharacterGallery,
+    portable_art: bool,
 ) {
     let area = frame.area();
     let t = (elapsed / 1.05).clamp(0.0, 1.0);
@@ -506,7 +513,7 @@ fn reveal(
     let [sprite_area, label_area] =
         Layout::vertical([Constraint::Min(8), Constraint::Length(6)]).areas(inner);
     if result.item.kind == "Character" {
-        if let Some(portrait) = gallery.get(result.item.name) {
+        if portable_art && let Some(portrait) = gallery.get(result.item.name) {
             frame.render_widget(TerminalPortrait::new(&portrait.reveal), sprite_area);
         }
     } else {
@@ -823,6 +830,7 @@ fn detail(
     result: &WishResult,
     inventory_count: Option<u32>,
     gallery: &CharacterGallery,
+    portable_art: bool,
 ) {
     let area = frame.area();
     let profile = item_profile(result);
@@ -876,7 +884,7 @@ fn detail(
         art_area,
     );
     if result.item.kind == "Character" {
-        if let Some(portrait) = gallery.get(result.item.name) {
+        if portable_art && let Some(portrait) = gallery.get(result.item.name) {
             frame.render_widget(TerminalPortrait::new(&portrait.detail), art_inner);
         }
     } else {

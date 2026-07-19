@@ -34,7 +34,7 @@ Respect the v0.2.0 module boundaries:
 - `src/app.rs`: interactive state machine, key handling, transitions, and persistence triggers.
 - `src/ui.rs`: Ratatui layout, styling, animations, terminal fallback art, profiles, and rendering tests.
 - `src/art.rs`: decoding, transparent trimming, nearest-neighbor rasterization, and ANSI portrait registry.
-- `src/kitty.rs`: Kitty graphics placement/clearing and its embedded portrait registry.
+- `src/kitty.rs`: direct Kitty graphics-protocol placement/clearing for Kitty and Ghostty, plus its embedded portrait registry.
 - `src/storage.rs`: save location and atomic persistence.
 - `src/main.rs`: CLI parsing, plain pull mode, stats, and reset commands.
 
@@ -118,12 +118,12 @@ A character is not complete when only its catalog entry exists. Update every rel
 4. Add a complete `ItemProfile` in `ui.rs`: title, element/weapon agreement, lore, quote, color, accent, and fallback terminal art where applicable.
 5. Add `assets/characters/<lowercase-name>.png` in the required asset format.
 6. Add the exact display name and `include_bytes!` path to `PORTRAITS` in `art.rs` for portable ANSI rendering.
-7. Add the same exact display name and `include_bytes!` path to `portrait_bytes()` in `kitty.rs` for full-resolution Kitty rendering.
+7. Add the same exact display name and `include_bytes!` path to `portrait_bytes()` in `kitty.rs` for full-resolution Kitty/Ghostty rendering.
 8. If featured, update every banner location listed above.
 9. Add or extend tests that prove both portrait registries contain the name.
-10. Exercise reveal, result detail, and inventory detail paths. Kitty and ANSI are separate consumers; success in one does not prove success in the other.
+10. Exercise reveal, result detail, and inventory detail paths. Protocol graphics and ANSI are separate consumers; success in one does not prove success in the other.
 
-The missing Kitty registry step caused new portraits to disappear during the 2026-07-18 work. Treat the dual-registry check as mandatory until the code is deliberately refactored to one shared source.
+The missing protocol-graphics registry step caused new portraits to disappear in Kitty during the 2026-07-18 work. Treat the dual-registry check as mandatory until the code is deliberately refactored to one shared source.
 
 ## Character portrait asset specification
 
@@ -148,7 +148,7 @@ Generation may use a flat green chroma background, but the project asset must no
 
 Do not replace `FilterType::Nearest` with smoothing filters. Do not pre-crop so tightly that weapons/capes touch the image edge. Do not make the background merely black; it must be transparent.
 
-Kitty sends the original embedded PNG bytes through `kitten icat`. ANSI fallback uses the pre-rasterized `TerminalRaster`. Both must be validated.
+Kitty and Ghostty receive the original embedded PNG bytes through direct Kitty graphics-protocol escape sequences. ANSI fallback uses the pre-rasterized `TerminalRaster`. Do not draw the ANSI portrait underneath a protocol placement: transparent PNG regions must reveal only the panel background. Both rendering modes must be validated.
 
 ## Adding a weapon class
 
@@ -245,7 +245,7 @@ Also perform proportional manual checks:
 
 - Minimum-size ANSI terminal (`80 × 34`).
 - Wider ANSI terminal.
-- Kitty reveal and detail/inventory detail when Kitty is available.
+- Kitty and Ghostty reveal and detail/inventory detail when either terminal is available.
 - Single pull and ten-pull.
 - CLI banner parsing for new banners.
 - Existing save load if serialized structures changed.
