@@ -257,7 +257,7 @@ pub struct StandardPityState {
     pub path: StandardPath,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SaveData {
     pub pity: PityState,
@@ -266,6 +266,44 @@ pub struct SaveData {
     pub total_wishes: u64,
     pub inventory: BTreeMap<String, u32>,
     pub history: Vec<SavedWish>,
+    pub teams: Vec<Team>,
+    pub equipment: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Team {
+    pub name: String,
+    pub members: [Option<String>; 3],
+}
+
+impl Default for Team {
+    fn default() -> Self {
+        Self {
+            name: "New Team".into(),
+            members: [None, None, None],
+        }
+    }
+}
+
+impl Default for SaveData {
+    fn default() -> Self {
+        Self {
+            pity: PityState::default(),
+            weapon_pity: WeaponPityState::default(),
+            standard_pity: StandardPityState::default(),
+            total_wishes: 0,
+            inventory: BTreeMap::new(),
+            history: Vec::new(),
+            teams: (1..=5)
+                .map(|n| Team {
+                    name: format!("Team {n}"),
+                    ..Team::default()
+                })
+                .collect(),
+            equipment: BTreeMap::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -284,5 +322,22 @@ impl From<&WishResult> for SavedWish {
             featured: value.featured,
             wish_number: value.wish_number,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn older_save_without_game_fields_receives_five_teams() {
+        let save: SaveData = serde_json::from_str("{}").unwrap();
+        assert_eq!(save.teams.len(), 5);
+        assert!(
+            save.teams
+                .iter()
+                .all(|team| team.members.iter().all(Option::is_none))
+        );
+        assert!(save.equipment.is_empty());
     }
 }

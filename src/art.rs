@@ -212,6 +212,26 @@ const PORTRAITS: &[(&str, &[u8])] = &[
         "Sandsworn Dominion",
         include_bytes!("../assets/weapons/sandsworn_dominion.png"),
     ),
+    (
+        "Dawncool Steel",
+        include_bytes!("../assets/weapons/dawncool_steel.png"),
+    ),
+    (
+        "Raven Bow",
+        include_bytes!("../assets/weapons/raven_bow.png"),
+    ),
+    (
+        "Quartz Spear",
+        include_bytes!("../assets/weapons/quartz_spear.png"),
+    ),
+    (
+        "Wanderer's Notes",
+        include_bytes!("../assets/weapons/wanderers_notes.png"),
+    ),
+    (
+        "Old Mercenary's Greatsword",
+        include_bytes!("../assets/weapons/old_mercenarys_greatsword.png"),
+    ),
 ];
 
 #[cfg(test)]

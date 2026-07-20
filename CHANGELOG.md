@@ -2,6 +2,22 @@
 
 All notable changes to WishSim will be documented here.
 
+## 0.5.0 - 2026-07-20
+
+- Ten-pull skip now preserves the cutscene and result card for every 5-star obtained before opening the summary.
+- Equipment selection now reports each weapon's unequipped count without printing character-holder names.
+
+- Added the first game-level main menu with Teams, Wish, Inventory, and Character Management destinations.
+- Added five persistent, freely named three-character team slots.
+- Added character management with a horizontal roster carousel, centered full art, N0–N10 ascension roadmap, combat stats, and type-safe weapon equipment.
+- Added side-by-side character and weapon artwork in the equipment picker, including dual native images in Ghostty/Kitty.
+- Added transparent pixel-art assets for every three-star weapon.
+- Corrected Corvin's visible complexion to a natural light tan while preserving his design.
+- Expanded team management into a three-member art gallery and enlarged/cleaned the root menu.
+- Added a rarity, element, and weapon-filtered character quick selector.
+- Made equipment selection copy-aware with rarity-colored weapon names and equipped-character indicators.
+- Made weapon-path art the default view and moved weapon details/stats behind `V`; removed stale two-weapon banner copy.
+
 ## 0.4.0 - 2026-07-19
 
 - Replaced the two-item weapon-path toggle with a scrollable selector covering every limited signature, including an optional art preview.

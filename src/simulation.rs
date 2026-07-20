@@ -195,6 +195,25 @@ pub fn all_characters() -> Vec<Item> {
         .chain(FEATURED_FOUR.iter().copied())
         .collect()
 }
+
+pub fn character_weapon_type(name: &str) -> &'static str {
+    match name {
+        "Astraea, Starbound" | "Steven, Azure Shade" | "Sergei, Winterfang" | "Mira" | "Farah" => {
+            "Catalyst"
+        }
+        "Kaelis, Ashen Vanguard" | "Pyrite, Gilded Step" | "Lumen" | "Anya" => "Sword",
+        "Seraphine, Verdant Oracle" | "Veyra, Stormseeker" | "Jeanette, Tidemender" | "Kestrel" => {
+            "Bow"
+        }
+        "Vaughn, Violet Oath" | "Orin, Keeper of Embers" | "Dolma" => "Claymore",
+        "Saif, Dune Sovereign" | "Thorne" | "Ysra" => "Polearm",
+        "Cinder, Forgeheart" | "Rook" | "Corvin" => "Gauntlet",
+        "Zephra" => "Gauntlet",
+        "Neris" => "Scythe",
+        "Brikka" | "Mako" => "Dual Blades",
+        _ => "Unaligned",
+    }
+}
 const FEATURED_FOUR_WEAPONS: &[Item] = &[
     Item {
         name: "Moonlit Longbow",
@@ -822,6 +841,18 @@ mod tests {
                 !STANDARD_FIVE_WEAPONS
                     .iter()
                     .any(|item| item.name == signature)
+            );
+        }
+    }
+
+    #[test]
+    fn every_character_has_an_equipment_type() {
+        for character in all_characters() {
+            assert_ne!(
+                character_weapon_type(character.name),
+                "Unaligned",
+                "{}",
+                character.name
             );
         }
     }

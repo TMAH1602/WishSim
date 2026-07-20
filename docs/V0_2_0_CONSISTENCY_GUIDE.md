@@ -229,12 +229,24 @@ Save only after deliberate state mutations, following existing `storage::save()`
 Add screens as explicit `Phase` variants with owned state. Handle transitions centrally in `App::handle_key` and time-driven transitions in `advance`. Preserve:
 
 - Space/Enter advance behavior.
-- `S` skip-all behavior for ten-pulls.
+- `S` skips ordinary remaining ten-pull results, but every remaining 5-star must still pass through `FiveStarIntro` and its `Reveal` card in pull order before the summary. A skipped ten-pull with no remaining 5-star proceeds directly to its summary.
 - `Esc` returning to the appropriate prior screen.
 - `Q` confirmation behavior across phases.
 - Five-star pre-reveal cutscene routing.
 
 Avoid widget-local hidden state or blocking animation loops. Rendering should be a pure view of `App` plus current time.
+
+## Game shell, teams, and equipment
+
+- `Phase::MainMenu` is the application root. Wish, Inventory, Teams, and Character Management are peer destinations; wishing must not become a second application shell.
+- Persist exactly five teams in `SaveData`, each with a user-authored name and three optional canonical character names. Missing fields from older saves must receive the five-team default through serde-compatible defaults.
+- Team attachment and character management use owned inventory records. Deleting a character clears team references and character equipment; deleting a weapon clears equipment references.
+- Character equipment must match `character_weapon_type()` and use exact catalog names. Abilities and combat-derived stats do not belong in this layer yet.
+- Ascension is derived from owned character copies rather than separately persisted. The current display begins at N0 for one copy and caps at N10 when the inventory reaches ten copies, following the product convention established on 2026-07-20.
+- The character carousel keeps the selected full art centered between stats and resonance/equipment information. The weapon picker places character and weapon art side by side in both ANSI and native protocol modes.
+- Character Management also exposes one canonical quick-selector phase. Its rarity, element, and weapon filters compose against owned characters and return the selected canonical roster index; do not duplicate character profiles in the filter UI.
+- Equipment selection shows one row per compatible weapon name, not one row per copy. Each row reports its unequipped count; weapon names use rarity color, the current character's weapon uses the gold `◆` marker, and weapons assigned elsewhere use `●` without printing holder names. Hide weapons with no copy available to the current character.
+- Team display uses three side-by-side art cards with name and element symbol beneath each portrait. Ghostty/Kitty must receive all three placements from the shared multi-image renderer.
 
 ## Testing and validation gate
 

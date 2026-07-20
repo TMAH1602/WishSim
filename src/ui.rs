@@ -1,7 +1,9 @@
 use std::{collections::BTreeSet, time::Instant};
 
 use crate::{
-    app::{App, ELEMENT_FILTERS, Phase},
+    app::{
+        App, CHARACTER_ELEMENTS, CHARACTER_WEAPONS, ELEMENT_FILTERS, Phase, filtered_characters,
+    },
     art::{CharacterGallery, TerminalRaster},
     model::{Banner, Rarity, WishResult},
     simulation::{all_characters, catalog_item, standard_character, weapon_for_path},
@@ -20,11 +22,107 @@ const PURPLE: Color = Color::Rgb(198, 120, 255);
 const BLUE: Color = Color::Rgb(90, 180, 255);
 const DIM: Color = Color::Rgb(100, 115, 145);
 
-pub fn graphics_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
+pub fn graphics_portraits(app: &App, area: Rect) -> Vec<(&str, Rect)> {
     if app.confirm_quit || area.width < 80 || area.height < 34 {
-        return None;
+        return Vec::new();
     }
-    match &app.phase {
+    if let Phase::Characters { cursor } = &app.phase {
+        let names = app.owned_character_names();
+        if let Some(name) = names.get(*cursor) {
+            let panel = centered(area, area.width.min(108), area.height.min(32));
+            let inner = panel.inner(Margin {
+                horizontal: 2,
+                vertical: 1,
+            });
+            let [_, body, _] = Layout::vertical([
+                Constraint::Length(3),
+                Constraint::Min(23),
+                Constraint::Length(2),
+            ])
+            .areas(inner);
+            let [_, art, _] = Layout::horizontal([
+                Constraint::Percentage(30),
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+            ])
+            .spacing(1)
+            .areas(body);
+            return vec![(catalog_item(name).unwrap().name, portrait_fit(art))];
+        }
+    }
+    if let Phase::Teams { team, .. } = &app.phase {
+        let panel = centered(area, area.width.min(112), area.height.min(32));
+        let inner = panel.inner(Margin {
+            horizontal: 2,
+            vertical: 1,
+        });
+        let [_, body, _] = Layout::vertical([
+            Constraint::Length(2),
+            Constraint::Min(24),
+            Constraint::Length(2),
+        ])
+        .areas(inner);
+        let cards = Layout::horizontal([
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+            Constraint::Percentage(33),
+        ])
+        .spacing(1)
+        .split(body);
+        return app.save.teams[*team]
+            .members
+            .iter()
+            .enumerate()
+            .filter_map(|(index, name)| {
+                name.as_deref().and_then(catalog_item).map(|item| {
+                    let inner = cards[index].inner(Margin {
+                        horizontal: 1,
+                        vertical: 1,
+                    });
+                    let [art, _, _] = Layout::vertical([
+                        Constraint::Min(15),
+                        Constraint::Length(2),
+                        Constraint::Length(3),
+                    ])
+                    .areas(inner);
+                    (item.name, portrait_fit(art))
+                })
+            })
+            .collect();
+    }
+    if let Phase::CharacterWeaponSelect {
+        character_cursor,
+        weapon_cursor,
+    } = &app.phase
+    {
+        let chars = app.owned_character_names();
+        if let Some(character) = chars.get(*character_cursor) {
+            let weapons = app.compatible_weapon_names(character);
+            let panel = centered(area, area.width.min(112), area.height.min(32));
+            let inner = panel.inner(Margin {
+                horizontal: 2,
+                vertical: 1,
+            });
+            let [body, _] =
+                Layout::vertical([Constraint::Min(25), Constraint::Length(2)]).areas(inner);
+            let [char_art, _, weapon_art] = Layout::horizontal([
+                Constraint::Percentage(30),
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+            ])
+            .spacing(1)
+            .areas(body);
+            let mut out = vec![(
+                catalog_item(character).unwrap().name,
+                portrait_fit(char_art),
+            )];
+            if let Some(weapon) = weapons.get(*weapon_cursor) {
+                out.push((catalog_item(weapon).unwrap().name, portrait_fit(weapon_art)));
+            }
+            return out;
+        }
+    }
+    let portrait = match &app.phase {
         Phase::Reveal { results, index, .. }
             if app.gallery.get(results[*index].item.name).is_some() =>
         {
@@ -43,17 +141,18 @@ pub fn graphics_portrait(app: &App, area: Rect) -> Option<(&str, Rect)> {
             Some((results[*selected].item.name, detail_portrait_area(area)))
         }
         Phase::InventoryDetail { name, .. } if app.gallery.get(name).is_some() => {
-            Some((name, detail_portrait_area(area)))
+            Some((name.as_str(), detail_portrait_area(area)))
         }
         Phase::WeaponSelect {
             cursor,
-            preview: true,
+            preview: false,
         } => {
             let item = weapon_for_path(crate::model::WeaponPath::ALL[*cursor]);
             Some((item.name, weapon_select_portrait_area(area)))
         }
         _ => None,
-    }
+    };
+    portrait.into_iter().collect()
 }
 
 fn detail_portrait_area(area: Rect) -> Rect {
@@ -111,7 +210,27 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
     }
 
     match &app.phase {
+        Phase::MainMenu { cursor } => main_menu(frame, app, *cursor),
         Phase::Home => home(frame, app),
+        Phase::Teams {
+            team,
+            slot,
+            editing_name,
+        } => teams(frame, app, *team, *slot, *editing_name),
+        Phase::TeamCharacterSelect { team, slot, cursor } => {
+            team_character_select(frame, app, *team, *slot, *cursor)
+        }
+        Phase::Characters { cursor } => characters(frame, app, *cursor),
+        Phase::CharacterQuickSelect {
+            cursor,
+            rarity,
+            element,
+            weapon,
+        } => character_quick_select(frame, app, *cursor, *rarity, *element, *weapon),
+        Phase::CharacterWeaponSelect {
+            character_cursor,
+            weapon_cursor,
+        } => character_weapon_select(frame, app, *character_cursor, *weapon_cursor),
         Phase::BannerSelect { cursor } => banner_select(frame, app, *cursor),
         Phase::WeaponSelect { cursor, preview } => weapon_select(frame, app, *cursor, *preview),
         Phase::CharacterArchive { cursor } => character_archive(frame, app, *cursor),
@@ -149,6 +268,7 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
             started,
             results,
             index,
+            ..
         } => reveal(
             frame,
             now.duration_since(*started).as_secs_f32(),
@@ -162,6 +282,7 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
             started,
             results,
             index,
+            ..
         } => five_star_intro(
             frame,
             now.duration_since(*started).as_secs_f32(),
@@ -180,6 +301,630 @@ pub fn render(frame: &mut Frame, app: &App, now: Instant) {
     if app.confirm_quit {
         confirm_quit(frame);
     }
+}
+
+fn main_menu(frame: &mut Frame, app: &App, cursor: usize) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: app.save.total_wishes as f32 * 0.1,
+            intensity: 1.0,
+        },
+        area,
+    );
+    let panel = centered(area, 78.min(area.width - 4), 30.min(area.height - 4));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(" THE CELESTIAL ARCHIVE ")
+            .title_alignment(Alignment::Center)
+            .title_style(Style::new().fg(GOLD).bold()),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 4,
+        vertical: 2,
+    });
+    let [title, menu, description, footer] = Layout::vertical([
+        Constraint::Length(5),
+        Constraint::Min(11),
+        Constraint::Length(4),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
+    frame.render_widget(
+        Paragraph::new(Text::from(vec![
+            Line::from("W I S H S I M").fg(Color::White).bold(),
+            Line::from("ASSEMBLE  •  EQUIP  •  SEEK THE STARS").fg(DIM),
+        ]))
+        .centered(),
+        title,
+    );
+    let entries = [
+        ("TEAMS", "Create five squads of three"),
+        ("WISH", "Acquire characters and armaments"),
+        ("INVENTORY", "Review the Archive's holdings"),
+        ("CHARACTERS", "Ascension, stats, and equipment"),
+    ];
+    let lines = entries
+        .iter()
+        .enumerate()
+        .flat_map(|(i, (name, _))| {
+            let style = if i == cursor {
+                Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
+            } else {
+                Style::new().fg(Color::White)
+            };
+            [Line::from(*name).style(style), Line::from("")]
+        })
+        .collect::<Vec<_>>();
+    frame.render_widget(
+        Paragraph::new(lines).centered().block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(Color::Rgb(45, 55, 85))),
+        ),
+        menu,
+    );
+    frame.render_widget(
+        Paragraph::new(entries[cursor].1).centered().fg(DIM).block(
+            Block::new()
+                .borders(Borders::TOP)
+                .border_style(Style::new().fg(Color::Rgb(45, 55, 85))),
+        ),
+        description,
+    );
+    frame.render_widget(
+        Paragraph::new("↑ / ↓ select  •  ENTER open  •  Q quit")
+            .centered()
+            .fg(DIM),
+        footer,
+    );
+}
+
+fn teams(frame: &mut Frame, app: &App, team: usize, slot: usize, editing: bool) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 0.5,
+            intensity: 0.7,
+        },
+        area,
+    );
+    let panel = centered(area, area.width.min(112), area.height.min(32));
+    let record = &app.save.teams[team];
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(format!(
+                " TEAM {}/5  •  {}{} ",
+                team + 1,
+                record.name,
+                if editing { "_" } else { "" }
+            ))
+            .title_alignment(Alignment::Center),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 3,
+        vertical: 2,
+    });
+    let [head, body, help] = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(24),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
+    frame.render_widget(
+        Paragraph::new("Three resonances form one field team.")
+            .centered()
+            .fg(DIM),
+        head,
+    );
+    let rows = Layout::horizontal([
+        Constraint::Percentage(33),
+        Constraint::Percentage(34),
+        Constraint::Percentage(33),
+    ])
+    .spacing(1)
+    .split(body);
+    for (i, row) in rows.iter().enumerate() {
+        let selected = i == slot;
+        let border = if selected {
+            GOLD
+        } else {
+            Color::Rgb(55, 65, 95)
+        };
+        let name = record.members[i].as_deref().unwrap_or("EMPTY RESONANCE");
+        let detail = record.members[i]
+            .as_deref()
+            .and_then(catalog_item)
+            .map(|c| {
+                format!(
+                    "{} {}  •  {}  •  N{}",
+                    element_symbol(c.element()),
+                    c.element(),
+                    crate::simulation::character_weapon_type(c.name),
+                    ascension_level(app.save.inventory.get(c.name).copied().unwrap_or(0))
+                )
+            })
+            .unwrap_or_else(|| "ENTER to attach a character".into());
+        let inner = row.inner(Margin {
+            horizontal: 1,
+            vertical: 1,
+        });
+        let [art, _, label] = Layout::vertical([
+            Constraint::Min(15),
+            Constraint::Length(2),
+            Constraint::Length(3),
+        ])
+        .areas(inner);
+        frame.render_widget(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(border)),
+            *row,
+        );
+        if !app.graphics {
+            if let Some(member) = record.members[i]
+                .as_deref()
+                .and_then(|n| app.gallery.get(n))
+            {
+                frame.render_widget(TerminalPortrait::new(&member.detail), art);
+            } else {
+                frame.render_widget(Paragraph::new("\n\n\n       ◇").centered().fg(DIM), art);
+            }
+        }
+        frame.render_widget(
+            Paragraph::new(Text::from(vec![
+                Line::from(format!("SLOT {}  •  {}", i + 1, name))
+                    .fg(if selected { GOLD } else { Color::White })
+                    .bold(),
+                Line::from(detail).fg(DIM),
+            ]))
+            .centered(),
+            label,
+        );
+    }
+    frame.render_widget(
+        Paragraph::new(if editing {
+            "TYPE NAME  •  ENTER save  •  BACKSPACE delete"
+        } else {
+            "↑ / ↓ team  •  ← / → slot  •  ENTER attach  •  D clear  •  R rename  •  ESC menu"
+        })
+        .centered()
+        .fg(DIM),
+        help,
+    );
+}
+
+fn element_symbol(element: &str) -> &'static str {
+    match element {
+        "Pyro" => "△",
+        "Hydro" => "≈",
+        "Electro" => "ϟ",
+        "Cryo" => "❄",
+        "Anemo" => "≋",
+        "Geo" => "◇",
+        "Dendro" => "♧",
+        _ => "·",
+    }
+}
+
+fn team_character_select(frame: &mut Frame, app: &App, team: usize, slot: usize, cursor: usize) {
+    teams(frame, app, team, slot, false);
+    let area = centered(
+        frame.area(),
+        54.min(frame.area().width - 6),
+        25.min(frame.area().height - 6),
+    );
+    frame.render_widget(Clear, area);
+    let names = app.owned_character_names();
+    let lines = names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            Line::from(format!(
+                " {:<38} N{} ",
+                n,
+                ascension_level(app.save.inventory.get(n).copied().unwrap_or(0))
+            ))
+            .style(if i == cursor {
+                Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
+            } else {
+                Style::new().fg(Color::White)
+            })
+        })
+        .collect::<Vec<_>>();
+    frame.render_widget(
+        Paragraph::new(if lines.is_empty() {
+            vec![Line::from("No characters owned. Visit Wish first.").fg(DIM)]
+        } else {
+            lines
+        })
+        .block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .border_style(Style::new().fg(PURPLE))
+                .title(" ATTACH CHARACTER "),
+        ),
+        area,
+    );
+}
+
+fn ascension_level(copies: u32) -> u32 {
+    if copies >= 10 {
+        10
+    } else {
+        copies.saturating_sub(1)
+    }
+}
+
+fn characters(frame: &mut Frame, app: &App, cursor: usize) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 0.8,
+            intensity: 0.65,
+        },
+        area,
+    );
+    let names = app.owned_character_names();
+    let panel = centered(area, area.width.min(108), area.height.min(32));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(" CHARACTER MANAGEMENT ")
+            .title_alignment(Alignment::Center),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    if names.is_empty() {
+        frame.render_widget(
+            Paragraph::new("No character resonances recorded. Make a wish to begin.")
+                .centered()
+                .fg(DIM),
+            inner,
+        );
+        return;
+    }
+    let name = &names[cursor];
+    let item = catalog_item(name).unwrap();
+    let profile = item_profile(&WishResult {
+        item,
+        rarity: item.rarity,
+        featured: false,
+        wish_number: 0,
+    });
+    let [carousel, body, help] = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Min(23),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
+    let prev = cursor
+        .checked_sub(1)
+        .and_then(|i| names.get(i))
+        .map_or("", String::as_str);
+    let next = names.get(cursor + 1).map_or("", String::as_str);
+    frame.render_widget(
+        Paragraph::new(format!("‹ {prev}     ✦ {name} ✦     {next} ›"))
+            .centered()
+            .fg(profile.color)
+            .bold(),
+        carousel,
+    );
+    let [stats, art, resonance] = Layout::horizontal([
+        Constraint::Percentage(30),
+        Constraint::Percentage(40),
+        Constraint::Percentage(30),
+    ])
+    .spacing(1)
+    .areas(body);
+    if !app.graphics
+        && let Some(p) = app.gallery.get(name)
+    {
+        frame.render_widget(TerminalPortrait::new(&p.detail), art);
+    }
+    let copies = app.save.inventory.get(name).copied().unwrap_or(0);
+    let level = ascension_level(copies);
+    let road_row = |range: std::ops::RangeInclusive<u32>| {
+        range
+            .map(|n| {
+                if n <= level {
+                    Span::styled("■ ", Style::new().fg(GOLD).bold())
+                } else {
+                    Span::styled("□ ", Style::new().fg(Color::Rgb(55, 65, 85)))
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let weapon = app
+        .save
+        .equipment
+        .get(name)
+        .map_or("UNEQUIPPED", String::as_str);
+    let weapon_color = app
+        .save
+        .equipment
+        .get(name)
+        .and_then(|weapon| catalog_item(weapon))
+        .map_or(DIM, |item| rarity_color(item.rarity));
+    let s = item.stats();
+    let stats_text = Text::from(vec![
+        Line::from(name.as_str()).fg(Color::White).bold(),
+        Line::from(format!(
+            "{}  •  {}  •  {}",
+            item.rarity.stars(),
+            item.element(),
+            profile.weapon
+        ))
+        .fg(profile.color),
+        Line::from(""),
+        Line::from("COMBAT PROFILE").fg(GOLD).bold(),
+        stat_line(&[("ATK", s.atk), ("DEF", s.def)], profile.color),
+        stat_line(&[("HP", s.hp), ("SPD", s.spd)], profile.color),
+        stat_line(
+            &[("CRIT RATE", s.crit_rate), ("CRIT DMG", s.crit_dmg)],
+            profile.color,
+        ),
+        stat_line(
+            &[("ELEMENTAL ATK", s.elemental_atk), ("POISE", s.poise)],
+            profile.color,
+        ),
+    ]);
+    frame.render_widget(
+        Paragraph::new(stats_text)
+            .block(
+                Block::new()
+                    .borders(Borders::RIGHT)
+                    .padding(Padding::uniform(1)),
+            )
+            .wrap(Wrap { trim: true }),
+        stats,
+    );
+    frame.render_widget(
+        Paragraph::new(Text::from(vec![
+            Line::from("ASCENSION ROAD").fg(GOLD).bold(),
+            Line::from(format!("N{level}  •  {copies} COPIES")).fg(Color::White),
+            Line::from(road_row(6..=10)),
+            Line::from(road_row(1..=5)),
+            Line::from(""),
+            Line::from("EQUIPPED WEAPON").fg(DIM),
+            Line::from(weapon).fg(weapon_color).bold(),
+            Line::from(""),
+            Line::from("Press W to manage this character's armament.").fg(DIM),
+        ]))
+        .block(
+            Block::new()
+                .borders(Borders::LEFT)
+                .padding(Padding::uniform(1)),
+        )
+        .wrap(Wrap { trim: true }),
+        resonance,
+    );
+    frame.render_widget(
+        Paragraph::new("← / → character  •  L roster list  •  W select weapon  •  ESC menu")
+            .centered()
+            .fg(DIM),
+        help,
+    );
+}
+
+fn character_quick_select(
+    frame: &mut Frame,
+    app: &App,
+    cursor: usize,
+    rarity: u8,
+    element: usize,
+    weapon: usize,
+) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 0.9,
+            intensity: 0.65,
+        },
+        area,
+    );
+    let owned = app.owned_character_names();
+    let names = filtered_characters(&owned, rarity, element, weapon);
+    let panel = centered(area, area.width.min(86), area.height.min(31));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(" CHARACTER ROSTER ")
+            .title_alignment(Alignment::Center),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [filters, list, help] = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Min(22),
+        Constraint::Length(2),
+    ])
+    .areas(inner);
+    let rarity_label = match rarity {
+        1 => "5★",
+        2 => "4★",
+        _ => "ALL",
+    };
+    frame.render_widget(
+        Paragraph::new(format!(
+            "[R] RARITY {rarity_label}   •   [E] ELEMENT {}   •   [T] WEAPON {}",
+            CHARACTER_ELEMENTS[element], CHARACTER_WEAPONS[weapon]
+        ))
+        .centered()
+        .fg(PURPLE),
+        filters,
+    );
+    let lines = names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            let item = catalog_item(name).unwrap();
+            let style = if i == cursor {
+                Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
+            } else {
+                Style::new().fg(rarity_color(item.rarity))
+            };
+            Line::from(format!(
+                " {:<30} {}  {:<9}  {} ",
+                name,
+                item.rarity.stars(),
+                item.element(),
+                crate::simulation::character_weapon_type(item.name)
+            ))
+            .style(style)
+        })
+        .collect::<Vec<_>>();
+    frame.render_widget(
+        Paragraph::new(if lines.is_empty() {
+            vec![Line::from("No owned characters match these filters.").fg(DIM)]
+        } else {
+            lines
+        })
+        .block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(Color::Rgb(45, 55, 85))),
+        ),
+        list,
+    );
+    frame.render_widget(
+        Paragraph::new(format!(
+            "↑ / ↓ select  •  ENTER open  •  ESC / L return  •  {} shown",
+            names.len()
+        ))
+        .centered()
+        .fg(DIM),
+        help,
+    );
+}
+
+fn character_weapon_select(
+    frame: &mut Frame,
+    app: &App,
+    character_cursor: usize,
+    weapon_cursor: usize,
+) {
+    let area = frame.area();
+    frame.render_widget(
+        Starfield {
+            time: 1.0,
+            intensity: 0.65,
+        },
+        area,
+    );
+    let chars = app.owned_character_names();
+    if chars.is_empty() {
+        return;
+    }
+    let character = &chars[character_cursor];
+    let weapons = app.compatible_weapon_names(character);
+    let selected = weapons.get(weapon_cursor);
+    let panel = centered(area, area.width.min(112), area.height.min(32));
+    frame.render_widget(
+        Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::new().fg(GOLD))
+            .title(format!(
+                " EQUIP {} ",
+                crate::simulation::character_weapon_type(character)
+            ))
+            .title_alignment(Alignment::Center),
+        panel,
+    );
+    let inner = panel.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    let [body, help] = Layout::vertical([Constraint::Min(25), Constraint::Length(2)]).areas(inner);
+    let [char_art, list, weapon_art] = Layout::horizontal([
+        Constraint::Percentage(30),
+        Constraint::Percentage(40),
+        Constraint::Percentage(30),
+    ])
+    .spacing(1)
+    .areas(body);
+    if !app.graphics {
+        if let Some(p) = app.gallery.get(character) {
+            frame.render_widget(TerminalPortrait::new(&p.detail), char_art);
+        }
+        if let Some(w) = selected.and_then(|n| app.gallery.get(n)) {
+            frame.render_widget(TerminalPortrait::new(&w.detail), weapon_art);
+        }
+    }
+    let current = app.save.equipment.get(character);
+    let start = weapon_cursor
+        .saturating_sub(8)
+        .min(weapons.len().saturating_sub(18));
+    let lines = weapons
+        .iter()
+        .enumerate()
+        .skip(start)
+        .take(18)
+        .map(|(i, n)| {
+            let holders = app.weapon_holders(n);
+            let equipped = current.is_some_and(|equipped| equipped == n);
+            let marker = if equipped {
+                "◆"
+            } else if holders.is_empty() {
+                " "
+            } else {
+                "●"
+            };
+            let owned = app.save.inventory.get(n).copied().unwrap_or(0);
+            let unequipped = owned.saturating_sub(holders.len() as u32);
+            let suffix = format!("x{unequipped} UNEQUIPPED");
+            let rarity = catalog_item(n).unwrap().rarity;
+            let style = if i == weapon_cursor {
+                Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
+            } else if equipped {
+                Style::new().fg(GOLD).bold()
+            } else {
+                Style::new().fg(rarity_color(rarity))
+            };
+            Line::from(format!("{marker} {}  {suffix}", n)).style(style)
+        })
+        .collect::<Vec<_>>();
+    frame.render_widget(
+        Paragraph::new(if lines.is_empty() {
+            vec![Line::from("No compatible weapons owned").fg(DIM)]
+        } else {
+            lines
+        })
+        .centered()
+        .block(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(PURPLE))
+                .title(" AVAILABLE WEAPONS  •  ◆ CURRENT  •  ● EQUIPPED ELSEWHERE "),
+        ),
+        list,
+    );
+    frame.render_widget(
+        Paragraph::new("↑ / ↓ weapon  •  ENTER equip  •  D unequip  •  ESC character")
+            .centered()
+            .fg(DIM),
+        help,
+    );
 }
 
 fn home(frame: &mut Frame, app: &App) {
@@ -269,7 +1014,7 @@ fn home(frame: &mut Frame, app: &App) {
         ),
         Banner::Weapon => (
             "I N C A R N A T E   A R M A M E N T S",
-            "POLARIS EDGE  ✦  NOVA GRIMOIRE",
+            "SELECTED SIGNATURE  •  EPITOMIZED PATH",
             "Set a path, and let fate sharpen its answer.",
             PURPLE,
         ),
@@ -578,7 +1323,7 @@ fn weapon_select(frame: &mut Frame, app: &App, cursor: usize, preview: bool) {
             let style = if index == cursor {
                 Style::new().fg(Color::Rgb(8, 12, 25)).bg(GOLD).bold()
             } else {
-                Style::new().fg(Color::White)
+                Style::new().fg(rarity_color(Rarity::Five))
             };
             Line::from(format!(" {marker} {:<25}", path.name())).style(style)
         })
@@ -610,28 +1355,41 @@ fn weapon_select(frame: &mut Frame, app: &App, cursor: usize, preview: bool) {
             .title(format!(" {} ", selected.name)),
         art,
     );
-    if preview {
+    if !preview {
         if !app.graphics
             && let Some(portrait) = app.gallery.get(selected.name)
         {
             frame.render_widget(TerminalPortrait::new(&portrait.detail), art_inner);
         }
     } else {
+        let stats = selected.stats();
         frame.render_widget(
             Paragraph::new(Text::from(vec![
+                Line::from("WEAPON RECORD").fg(GOLD).bold(),
+                Line::from(selected.name).fg(Color::White).bold(),
+                Line::from(format!("{}  •  {}", selected.rarity.stars(), selected.kind))
+                    .fg(rarity_color(selected.rarity)),
                 Line::from(""),
-                Line::from("V").fg(GOLD).bold(),
-                Line::from("PREVIEW WEAPON ART").fg(DIM),
+                stat_line(
+                    &[("ATK", stats.atk), ("ELEMENTAL ATK", stats.elemental_atk)],
+                    profile.color,
+                ),
+                stat_line(
+                    &[("CRIT RATE", stats.crit_rate), ("CRIT DMG", stats.crit_dmg)],
+                    profile.color,
+                ),
                 Line::from(""),
-                Line::from(format!("{}  •  {}", profile.element, profile.weapon)).fg(profile.color),
+                Line::from(profile.title).fg(profile.color),
+                Line::from(profile.lore).fg(DIM),
             ]))
-            .centered(),
+            .wrap(Wrap { trim: true })
+            .block(Block::new().padding(Padding::uniform(1))),
             art_inner,
         );
     }
     frame.render_widget(
         Paragraph::new(
-            "↑ / ↓ browse  •  V preview art  •  ENTER choose (resets Fate)  •  ESC return",
+            "↑ / ↓ browse  •  V art / details  •  ENTER choose (resets Fate)  •  ESC return",
         )
         .centered()
         .fg(DIM),
@@ -2688,5 +3446,12 @@ mod tests {
         assert_eq!(buffer[(0, 0)].symbol(), "▀");
         assert_eq!(buffer[(0, 0)].fg, Color::Rgb(255, 0, 0));
         assert_eq!(buffer[(0, 0)].bg, Color::Rgb(0, 0, 255));
+    }
+
+    #[test]
+    fn ascension_display_uses_requested_copy_endpoints() {
+        assert_eq!(ascension_level(1), 0);
+        assert_eq!(ascension_level(10), 10);
+        assert_eq!(ascension_level(99), 10);
     }
 }

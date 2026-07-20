@@ -8,37 +8,46 @@ const CHUNK_SIZE: usize = 4_096;
 
 #[derive(Default)]
 pub struct GraphicsRenderer {
-    current: Option<(String, Rect)>,
+    current: Vec<(String, Rect)>,
 }
 
 impl GraphicsRenderer {
-    pub fn sync(&mut self, portrait: Option<(&str, Rect)>) -> Result<()> {
-        let next = portrait.map(|(name, area)| (name.to_owned(), area));
+    pub fn sync(&mut self, portraits: &[(&str, Rect)]) -> Result<()> {
+        let next = portraits
+            .iter()
+            .map(|(name, area)| ((*name).to_owned(), *area))
+            .collect::<Vec<_>>();
         if self.current == next {
             return Ok(());
         }
         self.clear()?;
-        if let Some((name, area)) = &next
-            && let Some(bytes) = portrait_bytes(name)
-        {
-            display_png(&mut io::stdout(), bytes, *area)?;
+        for (index, (name, area)) in next.iter().enumerate() {
+            if let Some(bytes) = portrait_bytes(name) {
+                display_png(&mut io::stdout(), bytes, *area, IMAGE_ID + index as u32)?;
+            }
         }
         self.current = next;
         Ok(())
     }
 
     pub fn clear(&mut self) -> Result<()> {
-        if self.current.is_some() {
+        if !self.current.is_empty() {
             let mut stdout = io::stdout();
-            write!(stdout, "\x1b_Ga=d,d=I,i={IMAGE_ID},q=1\x1b\\")?;
+            for index in 0..self.current.len() {
+                write!(
+                    stdout,
+                    "\x1b_Ga=d,d=I,i={},q=1\x1b\\",
+                    IMAGE_ID + index as u32
+                )?;
+            }
             stdout.flush()?;
-            self.current = None;
+            self.current.clear();
         }
         Ok(())
     }
 }
 
-fn display_png(writer: &mut impl Write, png: &[u8], area: Rect) -> Result<()> {
+fn display_png(writer: &mut impl Write, png: &[u8], area: Rect, image_id: u32) -> Result<()> {
     let payload = base64_encode(png);
     write!(writer, "\x1b[{};{}H", area.y + 1, area.x + 1)?;
     for (index, chunk) in payload.as_bytes().chunks(CHUNK_SIZE).enumerate() {
@@ -46,7 +55,7 @@ fn display_png(writer: &mut impl Write, png: &[u8], area: Rect) -> Result<()> {
         if index == 0 {
             write!(
                 writer,
-                "\x1b_Ga=T,f=100,t=d,i={IMAGE_ID},c={},r={},C=1,q=1,m={more};",
+                "\x1b_Ga=T,f=100,t=d,i={image_id},c={},r={},C=1,q=1,m={more};",
                 area.width, area.height
             )?;
         } else {
@@ -127,6 +136,13 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Veilfire Sutra" => include_bytes!("../assets/weapons/veilfire_sutra.png"),
         "White Hunt Reliquary" => include_bytes!("../assets/weapons/white_hunt_reliquary.png"),
         "Sandsworn Dominion" => include_bytes!("../assets/weapons/sandsworn_dominion.png"),
+        "Dawncool Steel" => include_bytes!("../assets/weapons/dawncool_steel.png"),
+        "Raven Bow" => include_bytes!("../assets/weapons/raven_bow.png"),
+        "Quartz Spear" => include_bytes!("../assets/weapons/quartz_spear.png"),
+        "Wanderer's Notes" => include_bytes!("../assets/weapons/wanderers_notes.png"),
+        "Old Mercenary's Greatsword" => {
+            include_bytes!("../assets/weapons/old_mercenarys_greatsword.png")
+        }
         _ => return None,
     })
 }
@@ -181,6 +197,11 @@ mod tests {
             "Veilfire Sutra",
             "White Hunt Reliquary",
             "Sandsworn Dominion",
+            "Dawncool Steel",
+            "Raven Bow",
+            "Quartz Spear",
+            "Wanderer's Notes",
+            "Old Mercenary's Greatsword",
         ] {
             assert!(
                 portrait_bytes(name).is_some(),
@@ -198,7 +219,7 @@ mod tests {
     #[test]
     fn graphics_command_places_png_without_moving_the_cursor() {
         let mut output = Vec::new();
-        display_png(&mut output, b"PNG", Rect::new(4, 6, 20, 12)).unwrap();
+        display_png(&mut output, b"PNG", Rect::new(4, 6, 20, 12), IMAGE_ID).unwrap();
         let text = String::from_utf8(output).unwrap();
         assert!(text.starts_with("\x1b[7;5H\x1b_Ga=T,f=100,t=d,i=9173,c=20,r=12,C=1,q=1,m=0;"));
         assert!(text.ends_with("UE5H\x1b\\"));

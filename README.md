@@ -43,17 +43,22 @@ cargo run --release
 
 The interactive controls are shown on screen:
 
+- Main menu: `↑` / `↓` and `Enter` choose Teams, Wish, Inventory, or Characters
+- Teams: `↑` / `↓` select one of five teams; `←` / `→` select a member slot; `Enter` attaches an owned character; `R` renames; `D` clears a slot
+- Characters: `←` / `→` scroll the owned roster; `L` opens the quick roster; `W` opens compatible owned weapon copies; `Enter` equips and `D` unequips
+- Character quick roster: `R` filters rarity, `E` filters element, and `T` filters weapon type
+
 - `1` or `Enter`: one wish
 - `0`: ten wishes
 - `←` / `→` on the home screen: change banners
 - `B`: open the limited five-star banner grid
-- `P` on the weapon banner: open the scrollable five-star weapon path list; `V` previews the highlighted weapon art and `Enter` confirms it (changing paths resets Fate)
+- `P` on the weapon banner: open the scrollable five-star weapon path list; art appears by default, `V` toggles details/stats, and `Enter` confirms it (changing paths resets Fate)
 - `P` on the standard banner: change the selected standard character (resets Fate)
 - `C`: open the scrollable character archive; unowned characters retain their names but display as locked `?` records
 - `H`: history
 - `I`: inventory
 - `Space` or `Enter`: advance/skip an animation
-- `S`: skip every remaining reveal in a ten-pull
+- `S`: skip ordinary remaining reveals in a ten-pull; every 5-star still plays its cutscene and result card before the summary
 - `←` / `→`: select a result in the summary
 - `Enter`: inspect the selected character or weapon
 - `Esc`: return from an inspection screen
@@ -75,6 +80,8 @@ The interactive controls are shown on screen:
 Inventory deletion never changes pity or wish history. Every deletion, including individual and batch deletion, requires confirmation.
 
 Every character and weapon now has an initial combat-stat profile: CRIT DMG, CRIT RATE, ATK, DEF, SPD, ELEMENTAL ATK, HP, and POISE. These are visible on inspection and form the foundation for the planned 3v3 battle system.
+
+Character duplicates advance a visible Ascension roadmap from N0 toward N10. Five saved team slots can each hold three owned characters and a custom name. Every character can equip one owned weapon matching their weapon class; combat and abilities are intentionally reserved for a later release.
 
 Ghostty is the primary supported terminal and is detected automatically. Character and weapon art is sent directly through the Kitty graphics protocol implemented by Ghostty; Kitty is also detected and supported. Other terminals fall back to terminal half-block rendering. Artwork is embedded in the executable, so no separate asset folder or `kitten` helper is required. Run WishSim outside Zellij for protocol artwork.
 

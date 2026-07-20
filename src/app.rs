@@ -77,7 +77,33 @@ pub const ELEMENT_FILTERS: [&str; 9] = [
 ];
 
 pub enum Phase {
+    MainMenu {
+        cursor: usize,
+    },
     Home,
+    Teams {
+        team: usize,
+        slot: usize,
+        editing_name: bool,
+    },
+    TeamCharacterSelect {
+        team: usize,
+        slot: usize,
+        cursor: usize,
+    },
+    Characters {
+        cursor: usize,
+    },
+    CharacterQuickSelect {
+        cursor: usize,
+        rarity: u8,
+        element: usize,
+        weapon: usize,
+    },
+    CharacterWeaponSelect {
+        character_cursor: usize,
+        weapon_cursor: usize,
+    },
     BannerSelect {
         cursor: usize,
     },
@@ -111,11 +137,13 @@ pub enum Phase {
         started: Instant,
         results: Vec<WishResult>,
         index: usize,
+        five_star_only: bool,
     },
     FiveStarIntro {
         started: Instant,
         results: Vec<WishResult>,
         index: usize,
+        five_star_only: bool,
     },
     Summary {
         results: Vec<WishResult>,
@@ -130,7 +158,7 @@ pub enum Phase {
 pub fn run() -> Result<()> {
     let mut app = App {
         save: storage::load()?,
-        phase: Phase::Home,
+        phase: Phase::MainMenu { cursor: 0 },
         graphics: supports_graphics_protocol(),
         banner: Banner::Astraea,
         gallery: CharacterGallery::load()?,
@@ -153,7 +181,7 @@ pub fn run() -> Result<()> {
                 ui::render(frame, &app, now);
             })?;
             if app.graphics {
-                graphics_renderer.sync(ui::graphics_portrait(&app, drawn_area))?;
+                graphics_renderer.sync(&ui::graphics_portraits(&app, drawn_area))?;
             }
 
             let timeout = if app.is_animating() {
@@ -216,6 +244,49 @@ fn detects_graphics_protocol(
 }
 
 impl App {
+    pub fn owned_character_names(&self) -> Vec<String> {
+        crate::simulation::all_characters()
+            .into_iter()
+            .filter(|item| self.save.inventory.get(item.name).copied().unwrap_or(0) > 0)
+            .map(|item| item.name.to_owned())
+            .collect()
+    }
+
+    pub fn compatible_weapon_names(&self, character: &str) -> Vec<String> {
+        let kind = crate::simulation::character_weapon_type(character);
+        let mut names = self
+            .save
+            .inventory
+            .iter()
+            .filter_map(|(name, count)| {
+                let held_elsewhere = self
+                    .save
+                    .equipment
+                    .iter()
+                    .filter(|(holder, equipped)| {
+                        holder.as_str() != character && equipped.as_str() == name.as_str()
+                    })
+                    .count() as u32;
+                crate::simulation::catalog_item(name)
+                    .filter(|item| item.kind == kind && *count > held_elsewhere)
+                    .map(|_| name.clone())
+            })
+            .collect::<Vec<_>>();
+        names.sort();
+        names
+    }
+
+    pub fn weapon_holders(&self, weapon: &str) -> Vec<String> {
+        let mut holders = self
+            .save
+            .equipment
+            .iter()
+            .filter_map(|(character, equipped)| (equipped == weapon).then_some(character.clone()))
+            .collect::<Vec<_>>();
+        holders.sort();
+        holders
+    }
+
     pub fn inventory_names(&self) -> Vec<String> {
         let mut names = self
             .save
@@ -276,12 +347,229 @@ impl App {
             }
             return Ok(());
         }
+        if let Phase::Teams {
+            team,
+            editing_name: true,
+            ..
+        } = &mut self.phase
+        {
+            match key {
+                KeyCode::Enter | KeyCode::Esc => {
+                    storage::save(&self.save)?;
+                    if let Phase::Teams { editing_name, .. } = &mut self.phase {
+                        *editing_name = false;
+                    }
+                }
+                KeyCode::Backspace => {
+                    self.save.teams[*team].name.pop();
+                }
+                KeyCode::Char(ch)
+                    if !ch.is_control() && self.save.teams[*team].name.chars().count() < 24 =>
+                {
+                    self.save.teams[*team].name.push(ch)
+                }
+                _ => {}
+            }
+            return Ok(());
+        }
         if key == KeyCode::Char('q') {
             self.confirm_quit = true;
             return Ok(());
         }
         let inventory_names = self.inventory_names();
+        let character_names = self.owned_character_names();
+        let equipment_weapons = if let Phase::CharacterWeaponSelect {
+            character_cursor, ..
+        } = &self.phase
+        {
+            character_names
+                .get(*character_cursor)
+                .map(|name| self.compatible_weapon_names(name))
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
         match (&mut self.phase, key) {
+            (Phase::MainMenu { cursor }, KeyCode::Up) => *cursor = cursor.saturating_sub(1),
+            (Phase::MainMenu { cursor }, KeyCode::Down) => *cursor = (*cursor + 1).min(3),
+            (Phase::MainMenu { cursor }, KeyCode::Enter) => {
+                self.phase = match *cursor {
+                    0 => Phase::Teams {
+                        team: 0,
+                        slot: 0,
+                        editing_name: false,
+                    },
+                    1 => Phase::Home,
+                    2 => Phase::Inventory {
+                        cursor: 0,
+                        selected: BTreeSet::new(),
+                    },
+                    _ => Phase::Characters { cursor: 0 },
+                }
+            }
+            (Phase::Teams { slot, .. }, KeyCode::Left) => *slot = slot.saturating_sub(1),
+            (Phase::Teams { slot, .. }, KeyCode::Right) => *slot = (*slot + 1).min(2),
+            (Phase::Teams { team, .. }, KeyCode::Up) => *team = team.saturating_sub(1),
+            (Phase::Teams { team, .. }, KeyCode::Down) => *team = (*team + 1).min(4),
+            (Phase::Teams { editing_name, .. }, KeyCode::Char('r')) => *editing_name = true,
+            (Phase::Teams { team, slot, .. }, KeyCode::Enter) => {
+                self.phase = Phase::TeamCharacterSelect {
+                    team: *team,
+                    slot: *slot,
+                    cursor: 0,
+                }
+            }
+            (Phase::Teams { team, slot, .. }, KeyCode::Char('d')) => {
+                self.save.teams[*team].members[*slot] = None;
+                storage::save(&self.save)?;
+            }
+            (Phase::Teams { .. }, KeyCode::Esc) => self.phase = Phase::MainMenu { cursor: 0 },
+            (Phase::TeamCharacterSelect { cursor, .. }, KeyCode::Up) => {
+                *cursor = cursor.saturating_sub(1)
+            }
+            (Phase::TeamCharacterSelect { cursor, .. }, KeyCode::Down) => {
+                *cursor = (*cursor + 1).min(character_names.len().saturating_sub(1))
+            }
+            (Phase::TeamCharacterSelect { team, slot, cursor }, KeyCode::Enter) => {
+                if let Some(name) = character_names.get(*cursor).cloned() {
+                    for member in &mut self.save.teams[*team].members {
+                        if member.as_deref() == Some(&name) {
+                            *member = None;
+                        }
+                    }
+                    self.save.teams[*team].members[*slot] = Some(name);
+                    storage::save(&self.save)?;
+                }
+                self.phase = Phase::Teams {
+                    team: *team,
+                    slot: *slot,
+                    editing_name: false,
+                };
+            }
+            (Phase::TeamCharacterSelect { team, slot, .. }, KeyCode::Esc) => {
+                self.phase = Phase::Teams {
+                    team: *team,
+                    slot: *slot,
+                    editing_name: false,
+                }
+            }
+            (Phase::Characters { cursor }, KeyCode::Left) => *cursor = cursor.saturating_sub(1),
+            (Phase::Characters { cursor }, KeyCode::Right) => {
+                *cursor = (*cursor + 1).min(character_names.len().saturating_sub(1))
+            }
+            (Phase::Characters { cursor }, KeyCode::Char('w')) if !character_names.is_empty() => {
+                self.phase = Phase::CharacterWeaponSelect {
+                    character_cursor: *cursor,
+                    weapon_cursor: 0,
+                }
+            }
+            (Phase::Characters { .. }, KeyCode::Char('l')) => {
+                self.phase = Phase::CharacterQuickSelect {
+                    cursor: 0,
+                    rarity: 0,
+                    element: 0,
+                    weapon: 0,
+                }
+            }
+            (
+                Phase::CharacterQuickSelect {
+                    cursor,
+                    rarity,
+                    element,
+                    weapon,
+                },
+                key,
+            ) => {
+                let filtered = filtered_characters(&character_names, *rarity, *element, *weapon);
+                match key {
+                    KeyCode::Up => *cursor = cursor.saturating_sub(1),
+                    KeyCode::Down => *cursor = (*cursor + 1).min(filtered.len().saturating_sub(1)),
+                    KeyCode::Char('r') => {
+                        *rarity = (*rarity + 1) % 3;
+                        *cursor = 0;
+                    }
+                    KeyCode::Char('e') => {
+                        *element = (*element + 1) % CHARACTER_ELEMENTS.len();
+                        *cursor = 0;
+                    }
+                    KeyCode::Char('t') => {
+                        *weapon = (*weapon + 1) % CHARACTER_WEAPONS.len();
+                        *cursor = 0;
+                    }
+                    KeyCode::Enter => {
+                        if let Some(name) = filtered.get(*cursor) {
+                            let target = character_names
+                                .iter()
+                                .position(|owned| owned == name)
+                                .unwrap_or(0);
+                            self.phase = Phase::Characters { cursor: target };
+                        }
+                    }
+                    KeyCode::Esc | KeyCode::Char('l') => {
+                        self.phase = Phase::Characters { cursor: 0 }
+                    }
+                    _ => {}
+                }
+            }
+            (Phase::Characters { .. }, KeyCode::Esc) => self.phase = Phase::MainMenu { cursor: 3 },
+            (
+                Phase::CharacterWeaponSelect {
+                    weapon_cursor,
+                    character_cursor: _,
+                },
+                KeyCode::Up,
+            ) => {
+                *weapon_cursor = weapon_cursor
+                    .saturating_sub(1)
+                    .min(equipment_weapons.len().saturating_sub(1));
+            }
+            (
+                Phase::CharacterWeaponSelect {
+                    weapon_cursor,
+                    character_cursor: _,
+                },
+                KeyCode::Down,
+            ) => {
+                *weapon_cursor =
+                    (*weapon_cursor + 1).min(equipment_weapons.len().saturating_sub(1));
+            }
+            (
+                Phase::CharacterWeaponSelect {
+                    weapon_cursor,
+                    character_cursor,
+                },
+                KeyCode::Enter,
+            ) => {
+                if let Some(character) = character_names.get(*character_cursor)
+                    && let Some(weapon) = equipment_weapons.get(*weapon_cursor)
+                {
+                    self.save
+                        .equipment
+                        .insert(character.clone(), weapon.clone());
+                    storage::save(&self.save)?;
+                }
+            }
+            (
+                Phase::CharacterWeaponSelect {
+                    character_cursor, ..
+                },
+                KeyCode::Char('d'),
+            ) => {
+                if let Some(character) = character_names.get(*character_cursor) {
+                    self.save.equipment.remove(character);
+                    storage::save(&self.save)?;
+                }
+            }
+            (
+                Phase::CharacterWeaponSelect {
+                    character_cursor, ..
+                },
+                KeyCode::Esc,
+            ) => {
+                self.phase = Phase::Characters {
+                    cursor: *character_cursor,
+                }
+            }
             (Phase::Home, KeyCode::Char('1')) | (Phase::Home, KeyCode::Enter) => {
                 self.begin_pull(1)?
             }
@@ -446,7 +734,7 @@ impl App {
                 }
             }
             (Phase::Inventory { .. }, KeyCode::Esc | KeyCode::Char('i')) => {
-                self.phase = Phase::Home
+                self.phase = Phase::MainMenu { cursor: 2 }
             }
             (
                 Phase::InventoryDetail {
@@ -482,13 +770,24 @@ impl App {
                 self.phase = Self::reveal_phase(std::mem::take(results), 0, Instant::now());
             }
             (Phase::Flight { results, .. }, KeyCode::Char('s')) if results.len() > 1 => {
-                self.phase = Phase::Summary {
-                    results: std::mem::take(results),
-                    selected: 0,
-                };
+                self.phase = Self::next_five_star_phase(std::mem::take(results), 0, Instant::now());
             }
-            (Phase::Reveal { results, index, .. }, KeyCode::Char(' ') | KeyCode::Enter) => {
-                if *index + 1 < results.len() {
+            (
+                Phase::Reveal {
+                    results,
+                    index,
+                    five_star_only,
+                    ..
+                },
+                KeyCode::Char(' ') | KeyCode::Enter,
+            ) => {
+                if *five_star_only {
+                    self.phase = Self::next_five_star_phase(
+                        std::mem::take(results),
+                        *index + 1,
+                        Instant::now(),
+                    );
+                } else if *index + 1 < results.len() {
                     let next = *index + 1;
                     self.phase = Self::reveal_phase(std::mem::take(results), next, Instant::now());
                 } else {
@@ -498,24 +797,35 @@ impl App {
                     };
                 }
             }
-            (Phase::FiveStarIntro { results, index, .. }, KeyCode::Char(' ') | KeyCode::Enter) => {
+            (
+                Phase::FiveStarIntro {
+                    results,
+                    index,
+                    five_star_only,
+                    ..
+                },
+                KeyCode::Char(' ') | KeyCode::Enter,
+            ) => {
                 self.phase = Phase::Reveal {
                     started: Instant::now(),
                     results: std::mem::take(results),
                     index: *index,
+                    five_star_only: *five_star_only,
                 };
             }
-            (Phase::FiveStarIntro { results, .. }, KeyCode::Char('s')) if results.len() > 1 => {
-                self.phase = Phase::Summary {
-                    results: std::mem::take(results),
-                    selected: 0,
-                };
+            (
+                Phase::FiveStarIntro {
+                    five_star_only,
+                    results,
+                    ..
+                },
+                KeyCode::Char('s'),
+            ) if results.len() > 1 => {
+                *five_star_only = true;
             }
-            (Phase::Reveal { results, .. }, KeyCode::Char('s')) if results.len() > 1 => {
-                self.phase = Phase::Summary {
-                    results: std::mem::take(results),
-                    selected: 0,
-                };
+            (Phase::Reveal { results, index, .. }, KeyCode::Char('s')) if results.len() > 1 => {
+                self.phase =
+                    Self::next_five_star_phase(std::mem::take(results), *index + 1, Instant::now());
             }
             (Phase::Summary { selected, .. }, KeyCode::Left) => {
                 *selected = selected.saturating_sub(1)
@@ -538,6 +848,7 @@ impl App {
                     selected: *selected,
                 };
             }
+            (Phase::Home, KeyCode::Esc) => self.phase = Phase::MainMenu { cursor: 1 },
             (_, KeyCode::Esc) => self.phase = Phase::Home,
             _ => {}
         }
@@ -572,12 +883,22 @@ impl App {
                 started,
                 results,
                 index,
+                five_star_only,
             } if now.duration_since(*started) >= FIVE_STAR_INTRO_TIME => {
                 self.phase = Phase::Reveal {
                     started: now,
                     results: std::mem::take(results),
                     index: *index,
+                    five_star_only: *five_star_only,
                 };
+            }
+            Phase::Reveal {
+                started,
+                results,
+                index,
+                five_star_only: true,
+            } if now.duration_since(*started) >= Duration::from_secs(2) => {
+                self.phase = Self::next_five_star_phase(std::mem::take(results), *index + 1, now);
             }
             _ => {}
         }
@@ -589,20 +910,94 @@ impl App {
                 started: now,
                 results,
                 index,
+                five_star_only: false,
             }
         } else {
             Phase::Reveal {
                 started: now,
                 results,
                 index,
+                five_star_only: false,
+            }
+        }
+    }
+
+    fn next_five_star_phase(results: Vec<WishResult>, start: usize, now: Instant) -> Phase {
+        if let Some(index) = results
+            .iter()
+            .enumerate()
+            .skip(start)
+            .find_map(|(index, result)| {
+                (result.rarity == crate::model::Rarity::Five).then_some(index)
+            })
+        {
+            Phase::FiveStarIntro {
+                started: now,
+                results,
+                index,
+                five_star_only: true,
+            }
+        } else {
+            Phase::Summary {
+                results,
+                selected: 0,
             }
         }
     }
 }
 
+pub const CHARACTER_ELEMENTS: [&str; 8] = [
+    "ALL", "PYRO", "HYDRO", "ELECTRO", "CRYO", "ANEMO", "GEO", "DENDRO",
+];
+pub const CHARACTER_WEAPONS: [&str; 10] = [
+    "ALL",
+    "SWORD",
+    "CLAYMORE",
+    "BOW",
+    "POLEARM",
+    "CATALYST",
+    "GAUNTLET",
+    "SCYTHE",
+    "DUAL BLADES",
+    "UNALIGNED",
+];
+
+pub fn filtered_characters(
+    names: &[String],
+    rarity: u8,
+    element: usize,
+    weapon: usize,
+) -> Vec<String> {
+    names
+        .iter()
+        .filter(|name| {
+            crate::simulation::catalog_item(name).is_some_and(|item| {
+                (rarity == 0 || item.rarity.value() == if rarity == 1 { 5 } else { 4 })
+                    && (element == 0
+                        || item
+                            .element()
+                            .eq_ignore_ascii_case(CHARACTER_ELEMENTS[element]))
+                    && (weapon == 0
+                        || crate::simulation::character_weapon_type(item.name)
+                            .eq_ignore_ascii_case(CHARACTER_WEAPONS[weapon]))
+            })
+        })
+        .cloned()
+        .collect()
+}
+
 fn delete_inventory_entries(save: &mut SaveData, targets: &[String]) {
     for name in targets {
         save.inventory.remove(name);
+        save.equipment.remove(name);
+        save.equipment.retain(|_, weapon| weapon != name);
+        for team in &mut save.teams {
+            for member in &mut team.members {
+                if member.as_deref() == Some(name) {
+                    *member = None;
+                }
+            }
+        }
     }
 }
 
@@ -630,6 +1025,54 @@ mod tests {
     }
 
     #[test]
+    fn skip_routes_through_every_five_star_before_summary() {
+        let item = |name, rarity| WishResult {
+            item: Item {
+                name,
+                kind: "Character",
+                rarity,
+            },
+            rarity,
+            featured: false,
+            wish_number: 1,
+        };
+        let results = vec![
+            item("Three", Rarity::Three),
+            item("First Five", Rarity::Five),
+            item("Four", Rarity::Four),
+            item("Second Five", Rarity::Five),
+        ];
+
+        let phase = App::next_five_star_phase(results, 0, Instant::now());
+        let Phase::FiveStarIntro {
+            results,
+            index,
+            five_star_only: true,
+            ..
+        } = phase
+        else {
+            panic!("skip should stop at the first five-star");
+        };
+        assert_eq!(index, 1);
+
+        let phase = App::next_five_star_phase(results, index + 1, Instant::now());
+        let Phase::FiveStarIntro {
+            results,
+            index,
+            five_star_only: true,
+            ..
+        } = phase
+        else {
+            panic!("skip should stop at the second five-star");
+        };
+        assert_eq!(index, 3);
+        assert!(matches!(
+            App::next_five_star_phase(results, index + 1, Instant::now()),
+            Phase::Summary { .. }
+        ));
+    }
+
+    #[test]
     fn inventory_deletion_preserves_history_and_pity() {
         let mut save = SaveData::default();
         save.inventory.insert("Raven Bow".into(), 3);
@@ -641,6 +1084,7 @@ mod tests {
         assert_eq!(save.inventory.get("Quartz Spear"), Some(&2));
         assert_eq!(save.pity.five_star, 47);
         assert_eq!(save.total_wishes, 99);
+        assert_eq!(save.teams.len(), 5);
     }
 
     #[test]
@@ -671,5 +1115,21 @@ mod tests {
         assert_eq!(graphics_override(Some("0")), Some(false));
         assert_eq!(graphics_override(Some("unexpected")), None);
         assert_eq!(graphics_override(None), None);
+    }
+
+    #[test]
+    fn character_quick_filters_combine_rarity_element_and_weapon() {
+        let names = vec![
+            "Astraea, Starbound".into(),
+            "Anya".into(),
+            "Kestrel".into(),
+            "Mako".into(),
+        ];
+        assert_eq!(
+            filtered_characters(&names, 1, 4, 5),
+            vec!["Astraea, Starbound"]
+        );
+        assert_eq!(filtered_characters(&names, 2, 5, 3), vec!["Kestrel"]);
+        assert!(filtered_characters(&names, 1, 2, 1).is_empty());
     }
 }
