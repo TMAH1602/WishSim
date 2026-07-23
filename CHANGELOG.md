@@ -2,6 +2,11 @@
 
 All notable changes to WishSim will be documented here.
 
+## 0.6.1 - 2026-07-23
+
+- Repaired Yeoungin's portrait alpha matte so her face and other skin pixels remain visible in full-resolution and downsampled terminal rendering.
+- Character attachment and Character Management roster lists now scroll to keep the highlighted row visible.
+
 ## 0.6.0 - 2026-07-23
 
 - Added four-star Korean-inspired release companions Seo-yeon, an Electro catalyst tactician, and Ji-ho, a Pyro sword guardian, with complete profiles, abilities, stats, filters, archives, and transparent artwork.

@@ -245,6 +245,7 @@ Avoid widget-local hidden state or blocking animation loops. Rendering should be
 - Ascension is derived from owned character copies rather than separately persisted. The current display begins at N0 for one copy and caps at N10 when the inventory reaches ten copies, following the product convention established on 2026-07-20.
 - The character carousel keeps the selected full art centered between stats and resonance/equipment information. The weapon picker places character and weapon art side by side in both ANSI and native protocol modes.
 - Character Management also exposes one canonical quick-selector phase. Its rarity, element, and weapon filters compose against owned characters and return the selected canonical roster index; do not duplicate character profiles in the filter UI.
+- Character attachment and quick-selector lists must scroll their rendered paragraph viewport as the cursor moves beyond the visible row count. Keyboard cursor bounds alone do not make later roster entries visible.
 - Equipment selection shows one row per compatible weapon name, not one row per copy. Each row reports its unequipped count; weapon names use rarity color, the current character's weapon uses the gold `◆` marker, and weapons assigned elsewhere use `●` without printing holder names. Hide weapons with no copy available to the current character.
 - Team display uses three side-by-side art cards with name and element symbol beneath each portrait. Ghostty/Kitty must receive all three placements from the shared multi-image renderer.
 

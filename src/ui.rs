@@ -1026,12 +1026,14 @@ fn team_character_select(frame: &mut Frame, app: &App, team: usize, slot: usize,
             })
         })
         .collect::<Vec<_>>();
+    let scroll = selected_list_scroll(cursor, area.height.saturating_sub(2) as usize);
     frame.render_widget(
         Paragraph::new(if lines.is_empty() {
             vec![Line::from("No characters owned. Visit Wish first.").fg(DIM)]
         } else {
             lines
         })
+        .scroll((scroll as u16, 0))
         .block(
             Block::new()
                 .borders(Borders::ALL)
@@ -1280,12 +1282,14 @@ fn character_quick_select(
             .style(style)
         })
         .collect::<Vec<_>>();
+    let scroll = selected_list_scroll(cursor, list.height.saturating_sub(2) as usize);
     frame.render_widget(
         Paragraph::new(if lines.is_empty() {
             vec![Line::from("No owned characters match these filters.").fg(DIM)]
         } else {
             lines
         })
+        .scroll((scroll as u16, 0))
         .block(
             Block::new()
                 .borders(Borders::ALL)
@@ -1302,6 +1306,10 @@ fn character_quick_select(
         .fg(DIM),
         help,
     );
+}
+
+fn selected_list_scroll(cursor: usize, visible_rows: usize) -> usize {
+    cursor.saturating_sub(visible_rows.saturating_sub(1))
 }
 
 fn character_weapon_select(
@@ -4001,5 +4009,13 @@ mod tests {
                 .all(|area| area.width >= 20 && area.height >= 4)
         );
         assert!(areas.windows(2).all(|pair| pair[0] != pair[1]));
+    }
+
+    #[test]
+    fn selected_roster_row_stays_inside_the_visible_viewport() {
+        assert_eq!(selected_list_scroll(0, 8), 0);
+        assert_eq!(selected_list_scroll(7, 8), 0);
+        assert_eq!(selected_list_scroll(8, 8), 1);
+        assert_eq!(selected_list_scroll(28, 8), 21);
     }
 }
