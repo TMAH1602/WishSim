@@ -241,12 +241,25 @@ Avoid widget-local hidden state or blocking animation loops. Rendering should be
 - `Phase::MainMenu` is the application root. Wish, Inventory, Teams, and Character Management are peer destinations; wishing must not become a second application shell.
 - Persist exactly five teams in `SaveData`, each with a user-authored name and three optional canonical character names. Missing fields from older saves must receive the five-team default through serde-compatible defaults.
 - Team attachment and character management use owned inventory records. Deleting a character clears team references and character equipment; deleting a weapon clears equipment references.
-- Character equipment must match `character_weapon_type()` and use exact catalog names. Abilities and combat-derived stats do not belong in this layer yet.
+- Character equipment must match `character_weapon_type()` and use exact catalog names. Ability definitions and combat-derived stats belong in the transient Battle Test layer, not persisted equipment state.
 - Ascension is derived from owned character copies rather than separately persisted. The current display begins at N0 for one copy and caps at N10 when the inventory reaches ten copies, following the product convention established on 2026-07-20.
 - The character carousel keeps the selected full art centered between stats and resonance/equipment information. The weapon picker places character and weapon art side by side in both ANSI and native protocol modes.
 - Character Management also exposes one canonical quick-selector phase. Its rarity, element, and weapon filters compose against owned characters and return the selected canonical roster index; do not duplicate character profiles in the filter UI.
 - Equipment selection shows one row per compatible weapon name, not one row per copy. Each row reports its unequipped count; weapon names use rarity color, the current character's weapon uses the gold `◆` marker, and weapons assigned elsewhere use `●` without printing holder names. Hide weapons with no copy available to the current character.
 - Team display uses three side-by-side art cards with name and element symbol beneath each portrait. Ghostty/Kitty must receive all three placements from the shared multi-image renderer.
+
+## Battle Test conventions
+
+- Battle Test is an isolated prototype reached from `Phase::MainMenu`; it extends the shared state machine through explicit team-selection and battle phases rather than launching a separate loop.
+- Only complete saved teams of three may deploy. Create transient battle units from canonical character stats and equipped weapons. Level 50, HP, guard state, turn order, logs, and results are battle-session data and must never mutate the saved roster.
+- Display all three allies and three enemies simultaneously. The ANSI gallery and Ghostty/Kitty registry must use the same exact names and card rectangles; do not add low-resolution underlays beneath protocol art.
+- Sort the round order by SPD. Dead units are skipped. Enemy actions may resolve automatically until control reaches a living player character.
+- Every canonical character has one data-driven Battle Test loadout: Basic is always available, Skill waits one owner turn after use, and Ultimate waits three to five owner turns according to its provisional power. Healer Skills and Ultimates select a living ally; other Skills and Ultimates use ELEMENTAL ATK and the provisional elemental table. Defend remains available and uses DEF plus POISE.
+- Equipped weapons are transiently projected to level 50 with the character. The current prototype scales the weapon's ATK, ELEMENTAL ATK, CRIT RATE, and CRIT DMG to 150% of its catalog value before adding them to the combat unit; no level or derived stat is saved.
+- Enemy target selection must consider multiple living allies rather than always using slot zero. The current deterministic heuristic weighs HP percentage, active guard, and rotating positional pressure. Thornbloom's provisional poison chance is deterministic for reproducible tests, lasts three owner turns, and deals one-twelfth maximum HP at the start of each affected turn.
+- Keep elemental relationships centralized and display the exact active table in the field manual. Current 2× rules are provisional test data, not permanent lore or balance commitments.
+- Battle enemy PNGs follow the same 1024×1536 transparent-cutout contract as character and weapon art and must be registered in both `art.rs` and `kitty.rs`.
+- Battle Test must remain usable at the existing 80×34 minimum. Its result screen returns to team selection and never writes progression, rewards, or inventory.
 
 ## Testing and validation gate
 

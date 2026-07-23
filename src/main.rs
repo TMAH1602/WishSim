@@ -1,5 +1,6 @@
 mod app;
 mod art;
+mod battle;
 mod kitty;
 mod model;
 mod simulation;
@@ -25,6 +26,7 @@ enum BannerArg {
     Steven,
     Sergei,
     Saif,
+    Yeoungin,
     Standard,
     Weapon,
 }
@@ -39,6 +41,7 @@ impl From<BannerArg> for Banner {
             BannerArg::Steven => Self::Steven,
             BannerArg::Sergei => Self::Sergei,
             BannerArg::Saif => Self::Saif,
+            BannerArg::Yeoungin => Self::Yeoungin,
             BannerArg::Standard => Self::Standard,
             BannerArg::Weapon => Self::Weapon,
         }

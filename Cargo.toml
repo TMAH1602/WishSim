@@ -1,6 +1,6 @@
 [package]
 name = "wishsim"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "A cinematic terminal wish simulator with animated reveals and JRPG-style art"
 license = "MIT"

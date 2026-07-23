@@ -80,6 +80,14 @@ fn rasterize(image: &RgbaImage, max_width: u32, max_height: u32) -> TerminalRast
 
 const PORTRAITS: &[(&str, &[u8])] = &[
     (
+        "Hydro Slime",
+        include_bytes!("../assets/enemies/hydro_slime.png"),
+    ),
+    (
+        "Thornbloom",
+        include_bytes!("../assets/enemies/thornbloom.png"),
+    ),
+    (
         "Astraea, Starbound",
         include_bytes!("../assets/characters/astraea.png"),
     ),
@@ -124,6 +132,10 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     (
         "Saif, Dune Sovereign",
         include_bytes!("../assets/characters/saif.png"),
+    ),
+    (
+        "Yeoungin, Winter's Grace",
+        include_bytes!("../assets/characters/yeoungin.png"),
     ),
     (
         "Pyrite, Gilded Step",
@@ -193,6 +205,11 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     ("Dolma", include_bytes!("../assets/characters/dolma.png")),
     ("Corvin", include_bytes!("../assets/characters/corvin.png")),
     (
+        "Seo-yeon",
+        include_bytes!("../assets/characters/seo-yeon.png"),
+    ),
+    ("Ji-ho", include_bytes!("../assets/characters/ji-ho.png")),
+    (
         "Dreamwood Recurve",
         include_bytes!("../assets/weapons/dreamwood_recurve.png"),
     ),
@@ -211,6 +228,10 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     (
         "Sandsworn Dominion",
         include_bytes!("../assets/weapons/sandsworn_dominion.png"),
+    ),
+    (
+        "Rimebound Benediction",
+        include_bytes!("../assets/weapons/rimebound_benediction.png"),
     ),
     (
         "Dawncool Steel",

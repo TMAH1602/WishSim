@@ -119,12 +119,13 @@ pub enum Banner {
     Steven,
     Sergei,
     Saif,
+    Yeoungin,
     Standard,
     Weapon,
 }
 
 impl Banner {
-    pub const SELECTOR: [Self; 8] = [
+    pub const SELECTOR: [Self; 9] = [
         Self::Astraea,
         Self::Kaelis,
         Self::Seraphine,
@@ -132,9 +133,10 @@ impl Banner {
         Self::Steven,
         Self::Sergei,
         Self::Saif,
+        Self::Yeoungin,
         Self::Standard,
     ];
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Astraea,
         Self::Kaelis,
         Self::Seraphine,
@@ -142,6 +144,7 @@ impl Banner {
         Self::Steven,
         Self::Sergei,
         Self::Saif,
+        Self::Yeoungin,
         Self::Standard,
         Self::Weapon,
     ];
@@ -155,6 +158,7 @@ impl Banner {
             Self::Steven => "Veilfire Covenant",
             Self::Sergei => "Winterfang's Vigil",
             Self::Saif => "Sovereign of Shifting Sands",
+            Self::Yeoungin => "Mercy Beneath Winter",
             Self::Standard => "The Everlasting Archive",
             Self::Weapon => "Incarnate Armaments",
         }
@@ -203,10 +207,11 @@ pub enum WeaponPath {
     VeilfireSutra,
     WhiteHuntReliquary,
     SandswornDominion,
+    RimeboundBenediction,
 }
 
 impl WeaponPath {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::PolarisEdge,
         Self::NovaGrimoire,
         Self::DreamwoodRecurve,
@@ -214,6 +219,7 @@ impl WeaponPath {
         Self::VeilfireSutra,
         Self::WhiteHuntReliquary,
         Self::SandswornDominion,
+        Self::RimeboundBenediction,
     ];
     pub const fn name(self) -> &'static str {
         match self {
@@ -224,6 +230,7 @@ impl WeaponPath {
             Self::VeilfireSutra => "Veilfire Sutra",
             Self::WhiteHuntReliquary => "White Hunt Reliquary",
             Self::SandswornDominion => "Sandsworn Dominion",
+            Self::RimeboundBenediction => "Rimebound Benediction",
         }
     }
 }

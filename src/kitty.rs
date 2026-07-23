@@ -93,6 +93,8 @@ fn base64_encode(input: &[u8]) -> String {
 
 fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
     Some(match name {
+        "Hydro Slime" => include_bytes!("../assets/enemies/hydro_slime.png"),
+        "Thornbloom" => include_bytes!("../assets/enemies/thornbloom.png"),
         "Astraea, Starbound" => include_bytes!("../assets/characters/astraea.png"),
         "Kaelis, Ashen Vanguard" => include_bytes!("../assets/characters/kaelis.png"),
         "Seraphine, Verdant Oracle" => include_bytes!("../assets/characters/seraphine.png"),
@@ -109,6 +111,7 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Neris" => include_bytes!("../assets/characters/neris.png"),
         "Brikka" => include_bytes!("../assets/characters/brikka.png"),
         "Saif, Dune Sovereign" => include_bytes!("../assets/characters/saif.png"),
+        "Yeoungin, Winter's Grace" => include_bytes!("../assets/characters/yeoungin.png"),
         "Pyrite, Gilded Step" => include_bytes!("../assets/characters/pyrite.png"),
         "Jeanette, Tidemender" => include_bytes!("../assets/characters/jeanette.png"),
         "Polaris Edge" => include_bytes!("../assets/weapons/polaris_edge.png"),
@@ -131,11 +134,16 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Ysra" => include_bytes!("../assets/characters/ysra.png"),
         "Dolma" => include_bytes!("../assets/characters/dolma.png"),
         "Corvin" => include_bytes!("../assets/characters/corvin.png"),
+        "Seo-yeon" => include_bytes!("../assets/characters/seo-yeon.png"),
+        "Ji-ho" => include_bytes!("../assets/characters/ji-ho.png"),
         "Dreamwood Recurve" => include_bytes!("../assets/weapons/dreamwood_recurve.png"),
         "Oathbreaker Thunder" => include_bytes!("../assets/weapons/oathbreaker_thunder.png"),
         "Veilfire Sutra" => include_bytes!("../assets/weapons/veilfire_sutra.png"),
         "White Hunt Reliquary" => include_bytes!("../assets/weapons/white_hunt_reliquary.png"),
         "Sandsworn Dominion" => include_bytes!("../assets/weapons/sandsworn_dominion.png"),
+        "Rimebound Benediction" => {
+            include_bytes!("../assets/weapons/rimebound_benediction.png")
+        }
         "Dawncool Steel" => include_bytes!("../assets/weapons/dawncool_steel.png"),
         "Raven Bow" => include_bytes!("../assets/weapons/raven_bow.png"),
         "Quartz Spear" => include_bytes!("../assets/weapons/quartz_spear.png"),
@@ -154,6 +162,8 @@ mod tests {
     #[test]
     fn every_raster_item_has_protocol_portrait_bytes() {
         for name in [
+            "Hydro Slime",
+            "Thornbloom",
             "Astraea, Starbound",
             "Kaelis, Ashen Vanguard",
             "Seraphine, Verdant Oracle",
@@ -170,6 +180,7 @@ mod tests {
             "Neris",
             "Brikka",
             "Saif, Dune Sovereign",
+            "Yeoungin, Winter's Grace",
             "Pyrite, Gilded Step",
             "Jeanette, Tidemender",
             "Polaris Edge",
@@ -192,11 +203,14 @@ mod tests {
             "Ysra",
             "Dolma",
             "Corvin",
+            "Seo-yeon",
+            "Ji-ho",
             "Dreamwood Recurve",
             "Oathbreaker Thunder",
             "Veilfire Sutra",
             "White Hunt Reliquary",
             "Sandsworn Dominion",
+            "Rimebound Benediction",
             "Dawncool Steel",
             "Raven Bow",
             "Quartz Spear",

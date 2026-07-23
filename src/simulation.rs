@@ -40,6 +40,11 @@ pub const SAIF: Item = Item {
     kind: "Character",
     rarity: Rarity::Five,
 };
+pub const YEOUNGIN: Item = Item {
+    name: "Yeoungin, Winter's Grace",
+    kind: "Character",
+    rarity: Rarity::Five,
+};
 pub const DREAMWOOD_RECURVE: Item = Item {
     name: "Dreamwood Recurve",
     kind: "Bow",
@@ -62,6 +67,11 @@ pub const WHITE_HUNT_RELIQUARY: Item = Item {
 };
 pub const SANDSWORN_DOMINION: Item = Item {
     name: "Sandsworn Dominion",
+    kind: "Polearm",
+    rarity: Rarity::Five,
+};
+pub const RIMEBOUND_BENEDICTION: Item = Item {
+    name: "Rimebound Benediction",
     kind: "Polearm",
     rarity: Rarity::Five,
 };
@@ -186,27 +196,42 @@ const FEATURED_FOUR: &[Item] = &[
         kind: "Character",
         rarity: Rarity::Four,
     },
+    Item {
+        name: "Seo-yeon",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
+    Item {
+        name: "Ji-ho",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
 ];
 
 pub fn all_characters() -> Vec<Item> {
-    [ASTRAEA, KAELIS, SERAPHINE, VAUGHN, STEVEN, SERGEI, SAIF]
-        .into_iter()
-        .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
-        .chain(FEATURED_FOUR.iter().copied())
-        .collect()
+    [
+        ASTRAEA, KAELIS, SERAPHINE, VAUGHN, STEVEN, SERGEI, SAIF, YEOUNGIN,
+    ]
+    .into_iter()
+    .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
+    .chain(FEATURED_FOUR.iter().copied())
+    .collect()
 }
 
 pub fn character_weapon_type(name: &str) -> &'static str {
     match name {
-        "Astraea, Starbound" | "Steven, Azure Shade" | "Sergei, Winterfang" | "Mira" | "Farah" => {
-            "Catalyst"
-        }
-        "Kaelis, Ashen Vanguard" | "Pyrite, Gilded Step" | "Lumen" | "Anya" => "Sword",
+        "Astraea, Starbound"
+        | "Steven, Azure Shade"
+        | "Sergei, Winterfang"
+        | "Mira"
+        | "Farah"
+        | "Seo-yeon" => "Catalyst",
+        "Kaelis, Ashen Vanguard" | "Pyrite, Gilded Step" | "Lumen" | "Anya" | "Ji-ho" => "Sword",
         "Seraphine, Verdant Oracle" | "Veyra, Stormseeker" | "Jeanette, Tidemender" | "Kestrel" => {
             "Bow"
         }
         "Vaughn, Violet Oath" | "Orin, Keeper of Embers" | "Dolma" => "Claymore",
-        "Saif, Dune Sovereign" | "Thorne" | "Ysra" => "Polearm",
+        "Saif, Dune Sovereign" | "Yeoungin, Winter's Grace" | "Thorne" | "Ysra" => "Polearm",
         "Cinder, Forgeheart" | "Rook" | "Corvin" => "Gauntlet",
         "Zephra" => "Gauntlet",
         "Neris" => "Scythe",
@@ -295,6 +320,7 @@ pub fn featured_character(banner: Banner) -> Item {
         Banner::Steven => STEVEN,
         Banner::Sergei => SERGEI,
         Banner::Saif => SAIF,
+        Banner::Yeoungin => YEOUNGIN,
         Banner::Standard => ASTRAEA,
         Banner::Weapon => ASTRAEA,
     }
@@ -309,11 +335,13 @@ pub fn catalog_item(name: &str) -> Option<Item> {
         STEVEN,
         SERGEI,
         SAIF,
+        YEOUNGIN,
         DREAMWOOD_RECURVE,
         OATHBREAKER_THUNDER,
         VEILFIRE_SUTRA,
         WHITE_HUNT_RELIQUARY,
         SANDSWORN_DOMINION,
+        RIMEBOUND_BENEDICTION,
         POLARIS_EDGE,
         NOVA_GRIMOIRE,
     ]
@@ -336,6 +364,7 @@ pub fn item_element(name: &str) -> &'static str {
         | "Corvin"
         | "Winter's Requiem"
         | "White Hunt Reliquary" => "Cryo",
+        "Yeoungin, Winter's Grace" | "Rimebound Benediction" => "Cryo",
         "Lumen"
         | "Saif, Dune Sovereign"
         | "Pyrite, Gilded Step"
@@ -348,9 +377,14 @@ pub fn item_element(name: &str) -> &'static str {
         | "Steven, Azure Shade"
         | "Brikka"
         | "Ysra"
-        | "Twin Cinderfangs" => "Pyro",
+        | "Twin Cinderfangs"
+        | "Ji-ho" => "Pyro",
         "Seraphine, Verdant Oracle" | "Thorne" => "Dendro",
-        "Vaughn, Violet Oath" | "Veyra, Stormseeker" | "Rook" | "Oathbreaker Thunder" => "Electro",
+        "Vaughn, Violet Oath"
+        | "Veyra, Stormseeker"
+        | "Rook"
+        | "Seo-yeon"
+        | "Oathbreaker Thunder" => "Electro",
         "Mira" | "Jeanette, Tidemender" | "Mako" => "Hydro",
         "Zephra" | "Kestrel" | "Galegrip Knuckles" => "Anemo",
         _ => "Unaligned",
@@ -385,6 +419,16 @@ pub fn item_stats(item: Item) -> Stats {
             "Saif, Dune Sovereign" => Stats::character(item.rarity, 146, 128, 104, 1160, 126),
             "Pyrite, Gilded Step" => Stats::character(item.rarity, 139, 92, 158, 1010, 72),
             "Jeanette, Tidemender" => Stats::character(item.rarity, 96, 104, 112, 1420, 88),
+            "Yeoungin, Winter's Grace" => Stats {
+                crit_dmg: 125,
+                crit_rate: 5,
+                atk: 92,
+                def: 118,
+                spd: 110,
+                elemental_atk: 142,
+                hp: 1510,
+                poise: 104,
+            },
             "Farah" => Stats::character(item.rarity, 94, 118, 98, 1040, 112),
             "Anya" => Stats::character(item.rarity, 101, 106, 112, 1100, 98),
             "Rook" => Stats::character(item.rarity, 126, 86, 119, 960, 91),
@@ -396,6 +440,26 @@ pub fn item_stats(item: Item) -> Stats {
             "Zephra" => Stats::character(item.rarity, 112, 78, 128, 890, 70),
             "Neris" => Stats::character(item.rarity, 121, 82, 106, 930, 82),
             "Brikka" => Stats::character(item.rarity, 126, 91, 101, 980, 96),
+            "Seo-yeon" => Stats {
+                crit_dmg: 145,
+                crit_rate: 7,
+                atk: 91,
+                def: 102,
+                spd: 108,
+                elemental_atk: 136,
+                hp: 1030,
+                poise: 86,
+            },
+            "Ji-ho" => Stats {
+                crit_dmg: 150,
+                crit_rate: 6,
+                atk: 126,
+                def: 116,
+                spd: 103,
+                elemental_atk: 104,
+                hp: 1090,
+                poise: 121,
+            },
             _ => Stats::character(
                 item.rarity,
                 if item.rarity == Rarity::Five {
@@ -631,6 +695,7 @@ pub const fn weapon_for_path(path: WeaponPath) -> Item {
         WeaponPath::VeilfireSutra => VEILFIRE_SUTRA,
         WeaponPath::WhiteHuntReliquary => WHITE_HUNT_RELIQUARY,
         WeaponPath::SandswornDominion => SANDSWORN_DOMINION,
+        WeaponPath::RimeboundBenediction => RIMEBOUND_BENEDICTION,
     }
 }
 
@@ -762,6 +827,7 @@ mod tests {
             ("Saif, Dune Sovereign", "Geo", "Character"),
             ("Pyrite, Gilded Step", "Geo", "Character"),
             ("Jeanette, Tidemender", "Hydro", "Character"),
+            ("Yeoungin, Winter's Grace", "Cryo", "Character"),
             ("Farah", "Geo", "Character"),
             ("Anya", "Cryo", "Character"),
             ("Rook", "Electro", "Character"),
@@ -770,6 +836,8 @@ mod tests {
             ("Ysra", "Pyro", "Character"),
             ("Dolma", "Geo", "Character"),
             ("Corvin", "Cryo", "Character"),
+            ("Seo-yeon", "Electro", "Character"),
+            ("Ji-ho", "Pyro", "Character"),
             ("Galegrip Knuckles", "Anemo", "Gauntlet"),
             ("Winter's Requiem", "Cryo", "Scythe"),
             ("Twin Cinderfangs", "Pyro", "Dual Blades"),
@@ -781,12 +849,14 @@ mod tests {
         assert_eq!(ASTRAEA.element(), "Cryo");
         assert_eq!(featured_character(Banner::Sergei).name, SERGEI.name);
         assert_eq!(featured_character(Banner::Saif).name, SAIF.name);
+        assert_eq!(featured_character(Banner::Yeoungin).name, YEOUNGIN.name);
         for (weapon, kind) in [
             ("Dreamwood Recurve", "Bow"),
             ("Oathbreaker Thunder", "Claymore"),
             ("Veilfire Sutra", "Catalyst"),
             ("White Hunt Reliquary", "Catalyst"),
             ("Sandsworn Dominion", "Polearm"),
+            ("Rimebound Benediction", "Polearm"),
         ] {
             let item = catalog_item(weapon).unwrap();
             assert_eq!(item.rarity, Rarity::Five);
@@ -814,8 +884,13 @@ mod tests {
         assert!(steven.def < 80);
         assert!(steven.hp < 900);
 
+        let yeoungin = YEOUNGIN.stats();
+        assert!(yeoungin.hp > 1400);
+        assert!(yeoungin.elemental_atk > yeoungin.atk);
+        assert!(yeoungin.def > yeoungin.atk);
+
         let characters = all_characters();
-        assert_eq!(characters.len(), 26);
+        assert_eq!(characters.len(), 29);
         let mut names = characters.iter().map(|item| item.name).collect::<Vec<_>>();
         names.sort_unstable();
         names.dedup();
@@ -828,13 +903,14 @@ mod tests {
             .iter()
             .map(|path| weapon_for_path(*path).name)
             .collect::<Vec<_>>();
-        assert_eq!(names.len(), 7);
+        assert_eq!(names.len(), 8);
         for signature in [
             "Dreamwood Recurve",
             "Oathbreaker Thunder",
             "Veilfire Sutra",
             "White Hunt Reliquary",
             "Sandsworn Dominion",
+            "Rimebound Benediction",
         ] {
             assert!(names.contains(&signature));
             assert!(

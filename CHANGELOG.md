@@ -2,6 +2,17 @@
 
 All notable changes to WishSim will be documented here.
 
+## 0.6.0 - 2026-07-23
+
+- Added four-star Korean-inspired release companions Seo-yeon, an Electro catalyst tactician, and Ji-ho, a Pyro sword guardian, with complete profiles, abilities, stats, filters, archives, and transparent artwork.
+- Added named Basic, Skill, and Ultimate abilities for every character, with one-turn Skill waits and character-specific three-to-five-turn Ultimate waits.
+- Battle Test now projects equipped weapons to level 50, applies their scaled ATK/Elemental ATK/crit stats, uses tactical enemy targeting, and allows Thornbloom to inflict poison.
+- Added limited five-star Cryo polearm healer Yeoungin, Winter's Grace, including her shared-pity banner, combat profile, Battle Test healing/ATK support, archive integration, and transparent character artwork.
+- Added Yeoungin's five-star signature polearm, Rimebound Benediction, to the selectable weapon path with matching transparent artwork.
+- Added an isolated level-50 3v3 Battle Test with saved-team selection, speed-based turns, character abilities, DEF/POISE-based Defend, support healing, battle logs, HP gauges, and victory/defeat handling.
+- Added a main-menu field manual containing battle controls and provisional 2× elemental matchups.
+- Added transparent Hydro Slime and Thornbloom pixel-art enemies to both ANSI and Ghostty/Kitty rendering paths.
+
 ## 0.5.0 - 2026-07-20
 
 - Ten-pull skip now preserves the cutscene and result card for every 5-star obtained before opening the summary.

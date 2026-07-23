@@ -1,6 +1,6 @@
 # WishSim
 
-A cinematic terminal wish simulator built in Rust with Ratatui and Crossterm. It includes a growing archive of limited and standard banners, animated star flights, five-star cutscenes, original full-color character and weapon art, inspectable inventory, ten-pull summaries, persistent pity, featured guarantees, history, and deterministic command-line pulls.
+A cinematic terminal wish simulator and early turn-based RPG built in Rust with Ratatui and Crossterm. It includes a growing archive of limited and standard banners, animated star flights, five-star cutscenes, original full-color art, inspectable inventory, persistent teams and equipment, an isolated 3v3 Battle Test, persistent pity, history, and deterministic command-line pulls.
 
 WishSim uses original characters, weapons, lore, and artwork. It is an unofficial fan-made terminal game and is not affiliated with or endorsed by HoYoverse.
 
@@ -43,10 +43,14 @@ cargo run --release
 
 The interactive controls are shown on screen:
 
-- Main menu: `↑` / `↓` and `Enter` choose Teams, Wish, Inventory, or Characters
+- Main menu: `↑` / `↓` and `Enter` choose Teams, Wish, Inventory, Characters, Battle Test, or Info / Tutorial
 - Teams: `↑` / `↓` select one of five teams; `←` / `→` select a member slot; `Enter` attaches an owned character; `R` renames; `D` clears a slot
 - Characters: `←` / `→` scroll the owned roster; `L` opens the quick roster; `W` opens compatible owned weapon copies; `Enter` equips and `D` unequips
 - Character quick roster: `R` filters rarity, `E` filters element, and `T` filters weapon type
+- Battle Test: choose a complete saved team of three; characters and equipped weapons are projected to level 50 without changing saved data
+- Battle commands: every character has a named Basic available each turn, a Skill with a one-turn post-use wait, and an Ultimate with a three-to-five-turn post-use wait; healer Skills/Ultimates target teammates, and `Defend` reduces damage using DEF and POISE
+- Enemies choose targets using health, guard state, and rotating position pressure; Thornbloom can inflict a three-turn poison
+- Info / Tutorial: reviews the temporary combat rules and complete provisional elemental matchup table
 
 - `1` or `Enter`: one wish
 - `0`: ten wishes
@@ -81,7 +85,9 @@ Inventory deletion never changes pity or wish history. Every deletion, including
 
 Every character and weapon now has an initial combat-stat profile: CRIT DMG, CRIT RATE, ATK, DEF, SPD, ELEMENTAL ATK, HP, and POISE. These are visible on inspection and form the foundation for the planned 3v3 battle system.
 
-Character duplicates advance a visible Ascension roadmap from N0 toward N10. Five saved team slots can each hold three owned characters and a custom name. Every character can equip one owned weapon matching their weapon class; combat and abilities are intentionally reserved for a later release.
+Character duplicates advance a visible Ascension roadmap from N0 toward N10. Five saved team slots can each hold three owned characters and a custom name. Every character can equip one owned weapon matching their weapon class.
+
+Characters currently remain level 1 throughout collection and management. Battle Test is an intentionally isolated 3v3 prototype: it projects one complete team and three test enemies to level 50, displays both sides simultaneously, and resolves turns by SPD. It does not persist HP, levels, wins, losses, or combat progression. Character-specific Skill 1, Skill 2, and Ultimate abilities remain reserved for a later release.
 
 Ghostty is the primary supported terminal and is detected automatically. Character and weapon art is sent directly through the Kitty graphics protocol implemented by Ghostty; Kitty is also detected and supported. Other terminals fall back to terminal half-block rendering. Artwork is embedded in the executable, so no separate asset folder or `kitten` helper is required. Run WishSim outside Zellij for protocol artwork.
 
@@ -98,6 +104,7 @@ cargo run -- pull --count 10 --banner vaughn
 cargo run -- pull --count 10 --banner steven
 cargo run -- pull --count 10 --banner sergei
 cargo run -- pull --count 10 --banner saif
+cargo run -- pull --count 10 --banner yeoungin
 cargo run -- pull --count 10 --banner standard
 cargo run -- pull --count 10 --banner weapon
 cargo run -- stats

@@ -8,6 +8,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 
 use crate::{
     art::CharacterGallery,
+    battle::{BattleMenu, BattleState},
     kitty::GraphicsRenderer,
     model::{Banner, SaveData, WeaponPath, WishResult},
     simulation::WishEngine,
@@ -104,6 +105,13 @@ pub enum Phase {
         character_cursor: usize,
         weapon_cursor: usize,
     },
+    BattleTeamSelect {
+        cursor: usize,
+    },
+    Battle {
+        state: BattleState,
+    },
+    Tutorial,
     BannerSelect {
         cursor: usize,
     },
@@ -391,7 +399,7 @@ impl App {
         };
         match (&mut self.phase, key) {
             (Phase::MainMenu { cursor }, KeyCode::Up) => *cursor = cursor.saturating_sub(1),
-            (Phase::MainMenu { cursor }, KeyCode::Down) => *cursor = (*cursor + 1).min(3),
+            (Phase::MainMenu { cursor }, KeyCode::Down) => *cursor = (*cursor + 1).min(5),
             (Phase::MainMenu { cursor }, KeyCode::Enter) => {
                 self.phase = match *cursor {
                     0 => Phase::Teams {
@@ -404,7 +412,9 @@ impl App {
                         cursor: 0,
                         selected: BTreeSet::new(),
                     },
-                    _ => Phase::Characters { cursor: 0 },
+                    3 => Phase::Characters { cursor: 0 },
+                    4 => Phase::BattleTeamSelect { cursor: 0 },
+                    _ => Phase::Tutorial,
                 }
             }
             (Phase::Teams { slot, .. }, KeyCode::Left) => *slot = slot.saturating_sub(1),
@@ -512,6 +522,42 @@ impl App {
                 }
             }
             (Phase::Characters { .. }, KeyCode::Esc) => self.phase = Phase::MainMenu { cursor: 3 },
+            (Phase::BattleTeamSelect { cursor }, KeyCode::Up) => *cursor = cursor.saturating_sub(1),
+            (Phase::BattleTeamSelect { cursor }, KeyCode::Down) => {
+                *cursor = (*cursor + 1).min(self.save.teams.len().saturating_sub(1))
+            }
+            (Phase::BattleTeamSelect { cursor }, KeyCode::Enter) => {
+                let members = self.save.teams[*cursor]
+                    .members
+                    .iter()
+                    .cloned()
+                    .collect::<Option<Vec<_>>>();
+                if let Some(members) = members
+                    && let Some(state) = BattleState::new(&members, &self.save.equipment)
+                {
+                    self.phase = Phase::Battle { state };
+                }
+            }
+            (Phase::BattleTeamSelect { .. }, KeyCode::Esc) => {
+                self.phase = Phase::MainMenu { cursor: 4 }
+            }
+            (Phase::Battle { state }, KeyCode::Up | KeyCode::Left) => state.move_cursor(-1),
+            (Phase::Battle { state }, KeyCode::Down | KeyCode::Right) => state.move_cursor(1),
+            (Phase::Battle { state }, KeyCode::Enter) if state.outcome.is_none() => state.confirm(),
+            (Phase::Battle { state }, KeyCode::Enter) if state.outcome.is_some() => {
+                self.phase = Phase::BattleTeamSelect { cursor: 0 }
+            }
+            (Phase::Battle { state }, KeyCode::Esc)
+                if !matches!(state.menu, BattleMenu::Action) =>
+            {
+                state.back()
+            }
+            (Phase::Battle { .. }, KeyCode::Esc) => {
+                self.phase = Phase::BattleTeamSelect { cursor: 0 }
+            }
+            (Phase::Tutorial, KeyCode::Esc | KeyCode::Enter) => {
+                self.phase = Phase::MainMenu { cursor: 5 }
+            }
             (
                 Phase::CharacterWeaponSelect {
                     weapon_cursor,
