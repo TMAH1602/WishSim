@@ -120,12 +120,13 @@ pub enum Banner {
     Sergei,
     Saif,
     Yeoungin,
+    Klara,
     Standard,
     Weapon,
 }
 
 impl Banner {
-    pub const SELECTOR: [Self; 9] = [
+    pub const SELECTOR: [Self; 10] = [
         Self::Astraea,
         Self::Kaelis,
         Self::Seraphine,
@@ -134,9 +135,10 @@ impl Banner {
         Self::Sergei,
         Self::Saif,
         Self::Yeoungin,
+        Self::Klara,
         Self::Standard,
     ];
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Astraea,
         Self::Kaelis,
         Self::Seraphine,
@@ -145,6 +147,7 @@ impl Banner {
         Self::Sergei,
         Self::Saif,
         Self::Yeoungin,
+        Self::Klara,
         Self::Standard,
         Self::Weapon,
     ];
@@ -159,6 +162,7 @@ impl Banner {
             Self::Sergei => "Winterfang's Vigil",
             Self::Saif => "Sovereign of Shifting Sands",
             Self::Yeoungin => "Mercy Beneath Winter",
+            Self::Klara => "The Wind Reaps White",
             Self::Standard => "The Everlasting Archive",
             Self::Weapon => "Incarnate Armaments",
         }
@@ -176,6 +180,14 @@ pub enum StandardPath {
 }
 
 impl StandardPath {
+    pub const ALL: [Self; 5] = [
+        Self::Veyra,
+        Self::Orin,
+        Self::Cinder,
+        Self::Pyrite,
+        Self::Jeanette,
+    ];
+
     pub const fn name(self) -> &'static str {
         match self {
             Self::Veyra => "Veyra, Stormseeker",
@@ -183,16 +195,6 @@ impl StandardPath {
             Self::Cinder => "Cinder, Forgeheart",
             Self::Pyrite => "Pyrite, Gilded Step",
             Self::Jeanette => "Jeanette, Tidemender",
-        }
-    }
-
-    pub const fn next(self) -> Self {
-        match self {
-            Self::Veyra => Self::Orin,
-            Self::Orin => Self::Cinder,
-            Self::Cinder => Self::Pyrite,
-            Self::Pyrite => Self::Jeanette,
-            Self::Jeanette => Self::Veyra,
         }
     }
 }
@@ -208,10 +210,16 @@ pub enum WeaponPath {
     WhiteHuntReliquary,
     SandswornDominion,
     RimeboundBenediction,
+    GalesLastHarvest,
+    TempestMeridian,
+    EmberkeepersOath,
+    FurnaceheartBracers,
+    AurumFlash,
+    SilverTidemark,
 }
 
 impl WeaponPath {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 14] = [
         Self::PolarisEdge,
         Self::NovaGrimoire,
         Self::DreamwoodRecurve,
@@ -220,6 +228,12 @@ impl WeaponPath {
         Self::WhiteHuntReliquary,
         Self::SandswornDominion,
         Self::RimeboundBenediction,
+        Self::GalesLastHarvest,
+        Self::TempestMeridian,
+        Self::EmberkeepersOath,
+        Self::FurnaceheartBracers,
+        Self::AurumFlash,
+        Self::SilverTidemark,
     ];
     pub const fn name(self) -> &'static str {
         match self {
@@ -231,6 +245,12 @@ impl WeaponPath {
             Self::WhiteHuntReliquary => "White Hunt Reliquary",
             Self::SandswornDominion => "Sandsworn Dominion",
             Self::RimeboundBenediction => "Rimebound Benediction",
+            Self::GalesLastHarvest => "Gale's Last Harvest",
+            Self::TempestMeridian => "Tempest Meridian",
+            Self::EmberkeepersOath => "Emberkeeper's Oath",
+            Self::FurnaceheartBracers => "Furnaceheart Bracers",
+            Self::AurumFlash => "Aurum Flash",
+            Self::SilverTidemark => "Silver Tidemark",
         }
     }
 }
@@ -313,6 +333,38 @@ impl Default for SaveData {
     }
 }
 
+impl SaveData {
+    pub fn migrate_klara_name(&mut self) -> bool {
+        const OLD_NAME: &str = "Nadezhda, Jade Tempest";
+        const NEW_NAME: &str = "Klara, Jade Tempest";
+        let mut changed = false;
+
+        if let Some(count) = self.inventory.remove(OLD_NAME) {
+            *self.inventory.entry(NEW_NAME.into()).or_default() += count;
+            changed = true;
+        }
+        for wish in &mut self.history {
+            if wish.name == OLD_NAME {
+                wish.name = NEW_NAME.into();
+                changed = true;
+            }
+        }
+        for team in &mut self.teams {
+            for member in &mut team.members {
+                if member.as_deref() == Some(OLD_NAME) {
+                    *member = Some(NEW_NAME.into());
+                    changed = true;
+                }
+            }
+        }
+        if let Some(weapon) = self.equipment.remove(OLD_NAME) {
+            self.equipment.entry(NEW_NAME.into()).or_insert(weapon);
+            changed = true;
+        }
+        changed
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SavedWish {
     pub name: String,
@@ -346,5 +398,38 @@ mod tests {
                 .all(|team| team.members.iter().all(Option::is_none))
         );
         assert!(save.equipment.is_empty());
+    }
+
+    #[test]
+    fn old_nadezhda_references_migrate_to_klara_without_losing_copies() {
+        let mut save = SaveData::default();
+        save.inventory.insert("Nadezhda, Jade Tempest".into(), 2);
+        save.inventory.insert("Klara, Jade Tempest".into(), 1);
+        save.teams[0].members[0] = Some("Nadezhda, Jade Tempest".into());
+        save.equipment.insert(
+            "Nadezhda, Jade Tempest".into(),
+            "Gale's Last Harvest".into(),
+        );
+        save.history.push(SavedWish {
+            name: "Nadezhda, Jade Tempest".into(),
+            rarity: Rarity::Five,
+            featured: true,
+            wish_number: 1,
+        });
+
+        assert!(save.migrate_klara_name());
+        assert_eq!(save.inventory.get("Klara, Jade Tempest"), Some(&3));
+        assert!(!save.inventory.contains_key("Nadezhda, Jade Tempest"));
+        assert_eq!(
+            save.teams[0].members[0].as_deref(),
+            Some("Klara, Jade Tempest")
+        );
+        assert_eq!(
+            save.equipment
+                .get("Klara, Jade Tempest")
+                .map(String::as_str),
+            Some("Gale's Last Harvest")
+        );
+        assert_eq!(save.history[0].name, "Klara, Jade Tempest");
     }
 }

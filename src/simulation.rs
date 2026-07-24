@@ -45,6 +45,11 @@ pub const YEOUNGIN: Item = Item {
     kind: "Character",
     rarity: Rarity::Five,
 };
+pub const KLARA: Item = Item {
+    name: "Klara, Jade Tempest",
+    kind: "Character",
+    rarity: Rarity::Five,
+};
 pub const DREAMWOOD_RECURVE: Item = Item {
     name: "Dreamwood Recurve",
     kind: "Bow",
@@ -75,6 +80,11 @@ pub const RIMEBOUND_BENEDICTION: Item = Item {
     kind: "Polearm",
     rarity: Rarity::Five,
 };
+pub const GALES_LAST_HARVEST: Item = Item {
+    name: "Gale's Last Harvest",
+    kind: "Scythe",
+    rarity: Rarity::Five,
+};
 pub const POLARIS_EDGE: Item = Item {
     name: "Polaris Edge",
     kind: "Sword",
@@ -83,6 +93,31 @@ pub const POLARIS_EDGE: Item = Item {
 pub const NOVA_GRIMOIRE: Item = Item {
     name: "Nova Grimoire",
     kind: "Catalyst",
+    rarity: Rarity::Five,
+};
+pub const TEMPEST_MERIDIAN: Item = Item {
+    name: "Tempest Meridian",
+    kind: "Bow",
+    rarity: Rarity::Five,
+};
+pub const EMBERKEEPERS_OATH: Item = Item {
+    name: "Emberkeeper's Oath",
+    kind: "Claymore",
+    rarity: Rarity::Five,
+};
+pub const FURNACEHEART_BRACERS: Item = Item {
+    name: "Furnaceheart Bracers",
+    kind: "Gauntlet",
+    rarity: Rarity::Five,
+};
+pub const AURUM_FLASH: Item = Item {
+    name: "Aurum Flash",
+    kind: "Sword",
+    rarity: Rarity::Five,
+};
+pub const SILVER_TIDEMARK: Item = Item {
+    name: "Silver Tidemark",
+    kind: "Bow",
     rarity: Rarity::Five,
 };
 
@@ -124,6 +159,20 @@ const STANDARD_FIVE_WEAPONS: &[Item] = &[
         kind: "Claymore",
         rarity: Rarity::Five,
     },
+    TEMPEST_MERIDIAN,
+    EMBERKEEPERS_OATH,
+    FURNACEHEART_BRACERS,
+    AURUM_FLASH,
+    SILVER_TIDEMARK,
+];
+
+#[cfg(test)]
+const STANDARD_SIGNATURES: [(&str, &str); 5] = [
+    ("Veyra, Stormseeker", "Tempest Meridian"),
+    ("Orin, Keeper of Embers", "Emberkeeper's Oath"),
+    ("Cinder, Forgeheart", "Furnaceheart Bracers"),
+    ("Pyrite, Gilded Step", "Aurum Flash"),
+    ("Jeanette, Tidemender", "Silver Tidemark"),
 ];
 const FEATURED_FOUR: &[Item] = &[
     Item {
@@ -206,11 +255,16 @@ const FEATURED_FOUR: &[Item] = &[
         kind: "Character",
         rarity: Rarity::Four,
     },
+    Item {
+        name: "Taisia",
+        kind: "Character",
+        rarity: Rarity::Four,
+    },
 ];
 
 pub fn all_characters() -> Vec<Item> {
     [
-        ASTRAEA, KAELIS, SERAPHINE, VAUGHN, STEVEN, SERGEI, SAIF, YEOUNGIN,
+        ASTRAEA, KAELIS, SERAPHINE, VAUGHN, STEVEN, SERGEI, SAIF, YEOUNGIN, KLARA,
     ]
     .into_iter()
     .chain(STANDARD_FIVE_CHARACTERS.iter().copied())
@@ -234,7 +288,8 @@ pub fn character_weapon_type(name: &str) -> &'static str {
         "Saif, Dune Sovereign" | "Yeoungin, Winter's Grace" | "Thorne" | "Ysra" => "Polearm",
         "Cinder, Forgeheart" | "Rook" | "Corvin" => "Gauntlet",
         "Zephra" => "Gauntlet",
-        "Neris" => "Scythe",
+        "Neris" | "Klara, Jade Tempest" => "Scythe",
+        "Taisia" => "Catalyst",
         "Brikka" | "Mako" => "Dual Blades",
         _ => "Unaligned",
     }
@@ -321,6 +376,7 @@ pub fn featured_character(banner: Banner) -> Item {
         Banner::Sergei => SERGEI,
         Banner::Saif => SAIF,
         Banner::Yeoungin => YEOUNGIN,
+        Banner::Klara => KLARA,
         Banner::Standard => ASTRAEA,
         Banner::Weapon => ASTRAEA,
     }
@@ -336,12 +392,14 @@ pub fn catalog_item(name: &str) -> Option<Item> {
         SERGEI,
         SAIF,
         YEOUNGIN,
+        KLARA,
         DREAMWOOD_RECURVE,
         OATHBREAKER_THUNDER,
         VEILFIRE_SUTRA,
         WHITE_HUNT_RELIQUARY,
         SANDSWORN_DOMINION,
         RIMEBOUND_BENEDICTION,
+        GALES_LAST_HARVEST,
         POLARIS_EDGE,
         NOVA_GRIMOIRE,
     ]
@@ -365,12 +423,14 @@ pub fn item_element(name: &str) -> &'static str {
         | "Winter's Requiem"
         | "White Hunt Reliquary" => "Cryo",
         "Yeoungin, Winter's Grace" | "Rimebound Benediction" => "Cryo",
+        "Klara, Jade Tempest" | "Taisia" | "Gale's Last Harvest" => "Anemo",
         "Lumen"
         | "Saif, Dune Sovereign"
         | "Pyrite, Gilded Step"
         | "Farah"
         | "Dolma"
-        | "Sandsworn Dominion" => "Geo",
+        | "Sandsworn Dominion"
+        | "Aurum Flash" => "Geo",
         "Kaelis, Ashen Vanguard"
         | "Orin, Keeper of Embers"
         | "Cinder, Forgeheart"
@@ -378,14 +438,17 @@ pub fn item_element(name: &str) -> &'static str {
         | "Brikka"
         | "Ysra"
         | "Twin Cinderfangs"
-        | "Ji-ho" => "Pyro",
+        | "Ji-ho"
+        | "Emberkeeper's Oath"
+        | "Furnaceheart Bracers" => "Pyro",
         "Seraphine, Verdant Oracle" | "Thorne" => "Dendro",
         "Vaughn, Violet Oath"
         | "Veyra, Stormseeker"
         | "Rook"
         | "Seo-yeon"
-        | "Oathbreaker Thunder" => "Electro",
-        "Mira" | "Jeanette, Tidemender" | "Mako" => "Hydro",
+        | "Oathbreaker Thunder"
+        | "Tempest Meridian" => "Electro",
+        "Mira" | "Jeanette, Tidemender" | "Mako" | "Silver Tidemark" => "Hydro",
         "Zephra" | "Kestrel" | "Galegrip Knuckles" => "Anemo",
         _ => "Unaligned",
     }
@@ -429,6 +492,16 @@ pub fn item_stats(item: Item) -> Stats {
                 hp: 1510,
                 poise: 104,
             },
+            "Klara, Jade Tempest" => Stats {
+                crit_dmg: 150,
+                crit_rate: 12,
+                atk: 118,
+                def: 78,
+                spd: 146,
+                elemental_atk: 176,
+                hp: 1040,
+                poise: 68,
+            },
             "Farah" => Stats::character(item.rarity, 94, 118, 98, 1040, 112),
             "Anya" => Stats::character(item.rarity, 101, 106, 112, 1100, 98),
             "Rook" => Stats::character(item.rarity, 126, 86, 119, 960, 91),
@@ -449,6 +522,16 @@ pub fn item_stats(item: Item) -> Stats {
                 elemental_atk: 136,
                 hp: 1030,
                 poise: 86,
+            },
+            "Taisia" => Stats {
+                crit_dmg: 120,
+                crit_rate: 5,
+                atk: 74,
+                def: 92,
+                spd: 118,
+                elemental_atk: 142,
+                hp: 1210,
+                poise: 84,
             },
             "Ji-ho" => Stats {
                 crit_dmg: 150,
@@ -696,6 +779,12 @@ pub const fn weapon_for_path(path: WeaponPath) -> Item {
         WeaponPath::WhiteHuntReliquary => WHITE_HUNT_RELIQUARY,
         WeaponPath::SandswornDominion => SANDSWORN_DOMINION,
         WeaponPath::RimeboundBenediction => RIMEBOUND_BENEDICTION,
+        WeaponPath::GalesLastHarvest => GALES_LAST_HARVEST,
+        WeaponPath::TempestMeridian => TEMPEST_MERIDIAN,
+        WeaponPath::EmberkeepersOath => EMBERKEEPERS_OATH,
+        WeaponPath::FurnaceheartBracers => FURNACEHEART_BRACERS,
+        WeaponPath::AurumFlash => AURUM_FLASH,
+        WeaponPath::SilverTidemark => SILVER_TIDEMARK,
     }
 }
 
@@ -850,6 +939,7 @@ mod tests {
         assert_eq!(featured_character(Banner::Sergei).name, SERGEI.name);
         assert_eq!(featured_character(Banner::Saif).name, SAIF.name);
         assert_eq!(featured_character(Banner::Yeoungin).name, YEOUNGIN.name);
+        assert_eq!(featured_character(Banner::Klara).name, KLARA.name);
         for (weapon, kind) in [
             ("Dreamwood Recurve", "Bow"),
             ("Oathbreaker Thunder", "Claymore"),
@@ -857,6 +947,7 @@ mod tests {
             ("White Hunt Reliquary", "Catalyst"),
             ("Sandsworn Dominion", "Polearm"),
             ("Rimebound Benediction", "Polearm"),
+            ("Gale's Last Harvest", "Scythe"),
         ] {
             let item = catalog_item(weapon).unwrap();
             assert_eq!(item.rarity, Rarity::Five);
@@ -890,7 +981,7 @@ mod tests {
         assert!(yeoungin.def > yeoungin.atk);
 
         let characters = all_characters();
-        assert_eq!(characters.len(), 29);
+        assert_eq!(characters.len(), 31);
         let mut names = characters.iter().map(|item| item.name).collect::<Vec<_>>();
         names.sort_unstable();
         names.dedup();
@@ -903,7 +994,7 @@ mod tests {
             .iter()
             .map(|path| weapon_for_path(*path).name)
             .collect::<Vec<_>>();
-        assert_eq!(names.len(), 8);
+        assert_eq!(names.len(), 14);
         for signature in [
             "Dreamwood Recurve",
             "Oathbreaker Thunder",
@@ -911,12 +1002,43 @@ mod tests {
             "White Hunt Reliquary",
             "Sandsworn Dominion",
             "Rimebound Benediction",
+            "Gale's Last Harvest",
         ] {
             assert!(names.contains(&signature));
             assert!(
                 !STANDARD_FIVE_WEAPONS
                     .iter()
                     .any(|item| item.name == signature)
+            );
+        }
+    }
+
+    #[test]
+    fn every_standard_five_star_has_a_unique_obtainable_signature() {
+        assert_eq!(STANDARD_SIGNATURES.len(), STANDARD_FIVE_CHARACTERS.len());
+        for (character, signature) in STANDARD_SIGNATURES {
+            assert!(
+                STANDARD_FIVE_CHARACTERS
+                    .iter()
+                    .any(|item| item.name == character)
+            );
+            assert!(
+                STANDARD_FIVE_WEAPONS
+                    .iter()
+                    .any(|item| item.name == signature),
+                "{signature} must be obtainable from the standard weapon pool"
+            );
+            assert!(
+                WeaponPath::ALL
+                    .iter()
+                    .any(|path| weapon_for_path(*path).name == signature),
+                "{signature} must also be selectable on the weapon banner"
+            );
+            let character_kind = character_weapon_type(character);
+            let weapon_kind = catalog_item(signature).unwrap().kind;
+            assert_eq!(
+                character_kind, weapon_kind,
+                "{character} signature mismatch"
             );
         }
     }

@@ -105,6 +105,7 @@ cargo run -- pull --count 10 --banner steven
 cargo run -- pull --count 10 --banner sergei
 cargo run -- pull --count 10 --banner saif
 cargo run -- pull --count 10 --banner yeoungin
+cargo run -- pull --count 10 --banner klara
 cargo run -- pull --count 10 --banner standard
 cargo run -- pull --count 10 --banner weapon
 cargo run -- stats

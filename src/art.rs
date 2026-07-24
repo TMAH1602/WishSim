@@ -11,6 +11,7 @@ pub struct CharacterPortrait {
     pub reveal: TerminalRaster,
     pub detail: TerminalRaster,
     pub archive: TerminalRaster,
+    pub face: TerminalRaster,
 }
 
 pub struct TerminalRaster {
@@ -30,12 +31,20 @@ impl CharacterGallery {
         let mut portraits = HashMap::new();
         for (name, bytes) in PORTRAITS {
             let image = trim_transparent(&image::load_from_memory(bytes)?);
+            let face = FACE_PORTRAITS
+                .iter()
+                .find(|(face_name, _)| face_name == name)
+                .map(|(_, bytes)| image::load_from_memory(bytes))
+                .transpose()?
+                .map(|image| trim_transparent(&image))
+                .unwrap_or_else(|| image.clone());
             portraits.insert(
                 *name,
                 CharacterPortrait {
                     reveal: rasterize(&image, 22, 16),
                     detail: rasterize(&image, 28, 28),
                     archive: rasterize(&image, 10, 7),
+                    face: rasterize(&face, 24, 18),
                 },
             );
         }
@@ -77,6 +86,85 @@ fn rasterize(image: &RgbaImage, max_width: u32, max_height: u32) -> TerminalRast
         pixels: resized.pixels().map(|pixel| pixel.0).collect(),
     }
 }
+
+const FACE_PORTRAITS: &[(&str, &[u8])] = &[
+    ("Anya", include_bytes!("../assets/portraits/anya.png")),
+    (
+        "Astraea, Starbound",
+        include_bytes!("../assets/portraits/astraea.png"),
+    ),
+    ("Brikka", include_bytes!("../assets/portraits/brikka.png")),
+    (
+        "Cinder, Forgeheart",
+        include_bytes!("../assets/portraits/cinder.png"),
+    ),
+    ("Corvin", include_bytes!("../assets/portraits/corvin.png")),
+    ("Dolma", include_bytes!("../assets/portraits/dolma.png")),
+    ("Farah", include_bytes!("../assets/portraits/farah.png")),
+    (
+        "Jeanette, Tidemender",
+        include_bytes!("../assets/portraits/jeanette.png"),
+    ),
+    ("Ji-ho", include_bytes!("../assets/portraits/ji-ho.png")),
+    (
+        "Kaelis, Ashen Vanguard",
+        include_bytes!("../assets/portraits/kaelis.png"),
+    ),
+    ("Kestrel", include_bytes!("../assets/portraits/kestrel.png")),
+    ("Lumen", include_bytes!("../assets/portraits/lumen.png")),
+    ("Mako", include_bytes!("../assets/portraits/mako.png")),
+    ("Mira", include_bytes!("../assets/portraits/mira.png")),
+    ("Neris", include_bytes!("../assets/portraits/neris.png")),
+    (
+        "Orin, Keeper of Embers",
+        include_bytes!("../assets/portraits/orin.png"),
+    ),
+    (
+        "Pyrite, Gilded Step",
+        include_bytes!("../assets/portraits/pyrite.png"),
+    ),
+    ("Rook", include_bytes!("../assets/portraits/rook.png")),
+    (
+        "Saif, Dune Sovereign",
+        include_bytes!("../assets/portraits/saif.png"),
+    ),
+    (
+        "Seo-yeon",
+        include_bytes!("../assets/portraits/seo-yeon.png"),
+    ),
+    (
+        "Seraphine, Verdant Oracle",
+        include_bytes!("../assets/portraits/seraphine.png"),
+    ),
+    (
+        "Sergei, Winterfang",
+        include_bytes!("../assets/portraits/sergei.png"),
+    ),
+    (
+        "Steven, Azure Shade",
+        include_bytes!("../assets/portraits/steven.png"),
+    ),
+    ("Thorne", include_bytes!("../assets/portraits/thorne.png")),
+    (
+        "Vaughn, Violet Oath",
+        include_bytes!("../assets/portraits/vaughn.png"),
+    ),
+    (
+        "Veyra, Stormseeker",
+        include_bytes!("../assets/portraits/veyra.png"),
+    ),
+    (
+        "Yeoungin, Winter's Grace",
+        include_bytes!("../assets/portraits/yeoungin.png"),
+    ),
+    (
+        "Klara, Jade Tempest",
+        include_bytes!("../assets/portraits/klara.png"),
+    ),
+    ("Taisia", include_bytes!("../assets/portraits/taisia.png")),
+    ("Ysra", include_bytes!("../assets/portraits/ysra.png")),
+    ("Zephra", include_bytes!("../assets/portraits/zephra.png")),
+];
 
 const PORTRAITS: &[(&str, &[u8])] = &[
     (
@@ -138,12 +226,36 @@ const PORTRAITS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/characters/yeoungin.png"),
     ),
     (
+        "Klara, Jade Tempest",
+        include_bytes!("../assets/characters/klara.png"),
+    ),
+    (
         "Pyrite, Gilded Step",
         include_bytes!("../assets/characters/pyrite.png"),
     ),
     (
         "Jeanette, Tidemender",
         include_bytes!("../assets/characters/jeanette.png"),
+    ),
+    (
+        "Astral Ruin Knight",
+        include_bytes!("../assets/enemies/astral_ruin_knight.png"),
+    ),
+    (
+        "Ember Wisp",
+        include_bytes!("../assets/enemies/ember_wisp.png"),
+    ),
+    (
+        "Somnial Frostwyrm",
+        include_bytes!("../assets/enemies/somnial_frostwyrm.png"),
+    ),
+    (
+        "Mad Goliath",
+        include_bytes!("../assets/enemies/mad_goliath.png"),
+    ),
+    (
+        "Goliath Shardling",
+        include_bytes!("../assets/enemies/goliath_shardling.png"),
     ),
     (
         "Polaris Edge",
@@ -160,6 +272,26 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     (
         "Wolfsong Claymore",
         include_bytes!("../assets/weapons/wolfsong_claymore.png"),
+    ),
+    (
+        "Tempest Meridian",
+        include_bytes!("../assets/weapons/tempest_meridian.png"),
+    ),
+    (
+        "Emberkeeper's Oath",
+        include_bytes!("../assets/weapons/emberkeepers_oath.png"),
+    ),
+    (
+        "Furnaceheart Bracers",
+        include_bytes!("../assets/weapons/furnaceheart_bracers.png"),
+    ),
+    (
+        "Aurum Flash",
+        include_bytes!("../assets/weapons/aurum_flash.png"),
+    ),
+    (
+        "Silver Tidemark",
+        include_bytes!("../assets/weapons/silver_tidemark.png"),
     ),
     (
         "Moonlit Longbow",
@@ -209,6 +341,7 @@ const PORTRAITS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/characters/seo-yeon.png"),
     ),
     ("Ji-ho", include_bytes!("../assets/characters/ji-ho.png")),
+    ("Taisia", include_bytes!("../assets/characters/taisia.png")),
     (
         "Dreamwood Recurve",
         include_bytes!("../assets/weapons/dreamwood_recurve.png"),
@@ -232,6 +365,10 @@ const PORTRAITS: &[(&str, &[u8])] = &[
     (
         "Rimebound Benediction",
         include_bytes!("../assets/weapons/rimebound_benediction.png"),
+    ),
+    (
+        "Gale's Last Harvest",
+        include_bytes!("../assets/weapons/gales_last_harvest.png"),
     ),
     (
         "Dawncool Steel",
@@ -293,6 +430,20 @@ mod tests {
                             || (pixel[0] < 30 && pixel[1] > 240 && pixel[2] < 30))
                 }),
                 "{name} retains opaque chroma-key pixels"
+            );
+        }
+    }
+
+    #[test]
+    fn face_portraits_are_square_transparent_character_icons() {
+        assert_eq!(FACE_PORTRAITS.len(), 31);
+        for (name, bytes) in FACE_PORTRAITS {
+            let image = image::load_from_memory(bytes).unwrap().to_rgba8();
+            assert_eq!(image.dimensions(), (256, 256), "{name} face dimensions");
+            assert_eq!(image.get_pixel(0, 0)[3], 0, "{name} face corner");
+            assert!(
+                image.pixels().any(|pixel| pixel[3] > 200),
+                "{name} is empty"
             );
         }
     }

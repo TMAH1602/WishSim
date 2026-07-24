@@ -18,7 +18,9 @@ pub fn load() -> Result<SaveData> {
     }
     let text =
         fs::read_to_string(&path).wrap_err_with(|| format!("could not read {}", path.display()))?;
-    serde_json::from_str(&text).wrap_err("save data is invalid")
+    let mut data: SaveData = serde_json::from_str(&text).wrap_err("save data is invalid")?;
+    data.migrate_klara_name();
+    Ok(data)
 }
 
 pub fn save(data: &SaveData) -> Result<()> {

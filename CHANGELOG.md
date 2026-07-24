@@ -2,6 +2,23 @@
 
 All notable changes to WishSim will be documented here.
 
+## 0.7.0 - 2026-07-23
+
+- Expanded Character Management's quick-selector to a six-character, two-row portrait grid and increased the panel to use substantially more of the available terminal area in both ANSI and Ghostty rendering.
+- Renamed Nadezhda to Klara across the canonical catalog, banners, CLI, combat, profiles, portrait registries, and documentation; older saves migrate inventory copies, teams, equipment, and wish history safely. Replaced her full art with a corrected two-handed scythe pose and anatomically coherent left arm.
+- Removed Battle Test ability cooldowns; Skills and Ultimates are now gated entirely by their BP costs.
+- Rebalanced Mad Goliath so Hydro, Anemo, and Dendro rapidly break its Geo barrier; a barrier break stuns it for three turns and locks regeneration for five turns. Barriers no longer stack, and fallen Shardlings must remain defeated for at least five rounds before revival.
+- Added limited five-star Anemo scythe striker Klara, Jade Tempest, her four-star Anemo buffer Taisia, and the selectable five-star signature scythe Gale's Last Harvest, with complete transparent full art, archive portraits, profiles, stats, abilities, and Ghostty/ANSI registration.
+- Replaced the Standard Archive's one-key target cycle with a scrollable art/details Fate-path selector matching the weapon banner interaction.
+- Reworked Battle Test around a seven-point BP economy, role-based support effects, critical hits, barriers, and element-labeled commands with contextual ability descriptions.
+- Added the Astral Ruin Knight boss and Ember Wisp attendant, including transparent art and distinct boss/support tactics.
+- Added unique, obtainable five-star signature weapons for all five standard characters.
+- Added selectable Ruin Court, extreme Somnial Frostwyrm, and Mad Goliath encounters, elemental status conditions and immunities, animated combat feedback, barrier presentation, scaled enemy/active-character art, and per-unit BP meters.
+- Added the Geo Mad Goliath boss and its Shardlings, including boss barriers, minion summoning/revival behavior, and transparent enemy art.
+- Battle history now opens on demand with `H`; the reclaimed space enlarges combat art. Defend now grants 10% mitigation rather than a barrier.
+- Character Management now documents each character's combat role and abilities, while its filtered roster uses a large six-card paged face-portrait grid backed by a complete character portrait collection.
+- Character and standard banners now display centered currently featured/selected artwork beneath an independently centered banner title; all standard signatures are selectable on the weapon banner.
+
 ## 0.6.1 - 2026-07-23
 
 - Repaired Yeoungin's portrait alpha matte so her face and other skin pixels remain visible in full-resolution and downsampled terminal rendering.

@@ -8,9 +8,9 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 
 use crate::{
     art::CharacterGallery,
-    battle::{BattleMenu, BattleState},
+    battle::{BattleEncounter, BattleMenu, BattleState},
     kitty::GraphicsRenderer,
-    model::{Banner, SaveData, WeaponPath, WishResult},
+    model::{Banner, SaveData, StandardPath, WeaponPath, WishResult},
     simulation::WishEngine,
     storage, ui,
 };
@@ -108,6 +108,10 @@ pub enum Phase {
     BattleTeamSelect {
         cursor: usize,
     },
+    BattleEncounterSelect {
+        team: usize,
+        cursor: usize,
+    },
     Battle {
         state: BattleState,
     },
@@ -116,6 +120,10 @@ pub enum Phase {
         cursor: usize,
     },
     WeaponSelect {
+        cursor: usize,
+        preview: bool,
+    },
+    StandardSelect {
         cursor: usize,
         preview: bool,
     },
@@ -492,8 +500,10 @@ impl App {
             ) => {
                 let filtered = filtered_characters(&character_names, *rarity, *element, *weapon);
                 match key {
-                    KeyCode::Up => *cursor = cursor.saturating_sub(1),
-                    KeyCode::Down => *cursor = (*cursor + 1).min(filtered.len().saturating_sub(1)),
+                    KeyCode::Left => *cursor = cursor.saturating_sub(1),
+                    KeyCode::Right => *cursor = (*cursor + 1).min(filtered.len().saturating_sub(1)),
+                    KeyCode::Up => *cursor = cursor.saturating_sub(3),
+                    KeyCode::Down => *cursor = (*cursor + 3).min(filtered.len().saturating_sub(1)),
                     KeyCode::Char('r') => {
                         *rarity = (*rarity + 1) % 3;
                         *cursor = 0;
@@ -532,21 +542,49 @@ impl App {
                     .iter()
                     .cloned()
                     .collect::<Option<Vec<_>>>();
-                if let Some(members) = members
-                    && let Some(state) = BattleState::new(&members, &self.save.equipment)
-                {
-                    self.phase = Phase::Battle { state };
+                if members.is_some() {
+                    self.phase = Phase::BattleEncounterSelect {
+                        team: *cursor,
+                        cursor: 0,
+                    };
                 }
             }
             (Phase::BattleTeamSelect { .. }, KeyCode::Esc) => {
                 self.phase = Phase::MainMenu { cursor: 4 }
             }
+            (Phase::BattleEncounterSelect { cursor, .. }, KeyCode::Up) => {
+                *cursor = cursor.saturating_sub(1)
+            }
+            (Phase::BattleEncounterSelect { cursor, .. }, KeyCode::Down) => {
+                *cursor = (*cursor + 1).min(BattleEncounter::ALL.len() - 1)
+            }
+            (Phase::BattleEncounterSelect { team, cursor }, KeyCode::Enter) => {
+                let members = self.save.teams[*team]
+                    .members
+                    .iter()
+                    .cloned()
+                    .collect::<Option<Vec<_>>>();
+                if let Some(members) = members
+                    && let Some(state) = BattleState::new_for(
+                        &members,
+                        &self.save.equipment,
+                        BattleEncounter::ALL[*cursor],
+                    )
+                {
+                    self.phase = Phase::Battle { state };
+                }
+            }
+            (Phase::BattleEncounterSelect { .. }, KeyCode::Esc) => {
+                self.phase = Phase::BattleTeamSelect { cursor: 0 }
+            }
             (Phase::Battle { state }, KeyCode::Up | KeyCode::Left) => state.move_cursor(-1),
             (Phase::Battle { state }, KeyCode::Down | KeyCode::Right) => state.move_cursor(1),
+            (Phase::Battle { state }, KeyCode::Char('h')) => state.toggle_history(),
             (Phase::Battle { state }, KeyCode::Enter) if state.outcome.is_none() => state.confirm(),
             (Phase::Battle { state }, KeyCode::Enter) if state.outcome.is_some() => {
                 self.phase = Phase::BattleTeamSelect { cursor: 0 }
             }
+            (Phase::Battle { state }, KeyCode::Esc) if state.show_history => state.toggle_history(),
             (Phase::Battle { state }, KeyCode::Esc)
                 if !matches!(state.menu, BattleMenu::Action) =>
             {
@@ -677,6 +715,22 @@ impl App {
             (Phase::WeaponSelect { .. }, KeyCode::Esc | KeyCode::Char('p')) => {
                 self.phase = Phase::Home;
             }
+            (Phase::StandardSelect { cursor, .. }, KeyCode::Up) => {
+                *cursor = cursor.saturating_sub(1);
+            }
+            (Phase::StandardSelect { cursor, .. }, KeyCode::Down) => {
+                *cursor = (*cursor + 1).min(StandardPath::ALL.len() - 1);
+            }
+            (Phase::StandardSelect { preview, .. }, KeyCode::Char('v')) => *preview = !*preview,
+            (Phase::StandardSelect { cursor, .. }, KeyCode::Enter) => {
+                self.save.standard_pity.path = StandardPath::ALL[*cursor];
+                self.save.standard_pity.fate_points = 0;
+                storage::save(&self.save)?;
+                self.phase = Phase::Home;
+            }
+            (Phase::StandardSelect { .. }, KeyCode::Esc | KeyCode::Char('p')) => {
+                self.phase = Phase::Home;
+            }
             (Phase::CharacterArchive { cursor }, KeyCode::Left) => {
                 *cursor = cursor.saturating_sub(1);
             }
@@ -693,9 +747,14 @@ impl App {
                 self.phase = Phase::Home;
             }
             (Phase::Home, KeyCode::Char('p')) if self.banner == Banner::Standard => {
-                self.save.standard_pity.path = self.save.standard_pity.path.next();
-                self.save.standard_pity.fate_points = 0;
-                storage::save(&self.save)?;
+                let cursor = StandardPath::ALL
+                    .iter()
+                    .position(|path| *path == self.save.standard_pity.path)
+                    .unwrap_or(0);
+                self.phase = Phase::StandardSelect {
+                    cursor,
+                    preview: false,
+                };
             }
             (Phase::Home, KeyCode::Char('h')) => self.phase = Phase::History,
             (Phase::Home, KeyCode::Char('i')) => {
@@ -946,6 +1005,7 @@ impl App {
             } if now.duration_since(*started) >= Duration::from_secs(2) => {
                 self.phase = Self::next_five_star_phase(std::mem::take(results), *index + 1, now);
             }
+            Phase::Battle { state } => state.tick_visual(),
             _ => {}
         }
     }

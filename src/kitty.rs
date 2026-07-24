@@ -92,6 +92,9 @@ fn base64_encode(input: &[u8]) -> String {
 }
 
 fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
+    if let Some(name) = name.strip_prefix("face:") {
+        return face_portrait_bytes(name);
+    }
     Some(match name {
         "Hydro Slime" => include_bytes!("../assets/enemies/hydro_slime.png"),
         "Thornbloom" => include_bytes!("../assets/enemies/thornbloom.png"),
@@ -112,12 +115,23 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Brikka" => include_bytes!("../assets/characters/brikka.png"),
         "Saif, Dune Sovereign" => include_bytes!("../assets/characters/saif.png"),
         "Yeoungin, Winter's Grace" => include_bytes!("../assets/characters/yeoungin.png"),
+        "Klara, Jade Tempest" => include_bytes!("../assets/characters/klara.png"),
         "Pyrite, Gilded Step" => include_bytes!("../assets/characters/pyrite.png"),
         "Jeanette, Tidemender" => include_bytes!("../assets/characters/jeanette.png"),
+        "Astral Ruin Knight" => include_bytes!("../assets/enemies/astral_ruin_knight.png"),
+        "Ember Wisp" => include_bytes!("../assets/enemies/ember_wisp.png"),
+        "Somnial Frostwyrm" => include_bytes!("../assets/enemies/somnial_frostwyrm.png"),
+        "Mad Goliath" => include_bytes!("../assets/enemies/mad_goliath.png"),
+        "Goliath Shardling" => include_bytes!("../assets/enemies/goliath_shardling.png"),
         "Polaris Edge" => include_bytes!("../assets/weapons/polaris_edge.png"),
         "Nova Grimoire" => include_bytes!("../assets/weapons/nova_grimoire.png"),
         "Celestial Atlas" => include_bytes!("../assets/weapons/celestial_atlas.png"),
         "Wolfsong Claymore" => include_bytes!("../assets/weapons/wolfsong_claymore.png"),
+        "Tempest Meridian" => include_bytes!("../assets/weapons/tempest_meridian.png"),
+        "Emberkeeper's Oath" => include_bytes!("../assets/weapons/emberkeepers_oath.png"),
+        "Furnaceheart Bracers" => include_bytes!("../assets/weapons/furnaceheart_bracers.png"),
+        "Aurum Flash" => include_bytes!("../assets/weapons/aurum_flash.png"),
+        "Silver Tidemark" => include_bytes!("../assets/weapons/silver_tidemark.png"),
         "Moonlit Longbow" => include_bytes!("../assets/weapons/moonlit_longbow.png"),
         "Sage's Codex" => include_bytes!("../assets/weapons/sages_codex.png"),
         "Ironwind Blade" => include_bytes!("../assets/weapons/ironwind_blade.png"),
@@ -136,6 +150,7 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Corvin" => include_bytes!("../assets/characters/corvin.png"),
         "Seo-yeon" => include_bytes!("../assets/characters/seo-yeon.png"),
         "Ji-ho" => include_bytes!("../assets/characters/ji-ho.png"),
+        "Taisia" => include_bytes!("../assets/characters/taisia.png"),
         "Dreamwood Recurve" => include_bytes!("../assets/weapons/dreamwood_recurve.png"),
         "Oathbreaker Thunder" => include_bytes!("../assets/weapons/oathbreaker_thunder.png"),
         "Veilfire Sutra" => include_bytes!("../assets/weapons/veilfire_sutra.png"),
@@ -144,6 +159,7 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Rimebound Benediction" => {
             include_bytes!("../assets/weapons/rimebound_benediction.png")
         }
+        "Gale's Last Harvest" => include_bytes!("../assets/weapons/gales_last_harvest.png"),
         "Dawncool Steel" => include_bytes!("../assets/weapons/dawncool_steel.png"),
         "Raven Bow" => include_bytes!("../assets/weapons/raven_bow.png"),
         "Quartz Spear" => include_bytes!("../assets/weapons/quartz_spear.png"),
@@ -151,6 +167,80 @@ fn portrait_bytes(name: &str) -> Option<&'static [u8]> {
         "Old Mercenary's Greatsword" => {
             include_bytes!("../assets/weapons/old_mercenarys_greatsword.png")
         }
+        _ => return None,
+    })
+}
+
+pub fn face_portrait_key(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "Anya" => "face:Anya",
+        "Astraea, Starbound" => "face:Astraea, Starbound",
+        "Brikka" => "face:Brikka",
+        "Cinder, Forgeheart" => "face:Cinder, Forgeheart",
+        "Corvin" => "face:Corvin",
+        "Dolma" => "face:Dolma",
+        "Farah" => "face:Farah",
+        "Jeanette, Tidemender" => "face:Jeanette, Tidemender",
+        "Ji-ho" => "face:Ji-ho",
+        "Kaelis, Ashen Vanguard" => "face:Kaelis, Ashen Vanguard",
+        "Kestrel" => "face:Kestrel",
+        "Lumen" => "face:Lumen",
+        "Mako" => "face:Mako",
+        "Mira" => "face:Mira",
+        "Neris" => "face:Neris",
+        "Orin, Keeper of Embers" => "face:Orin, Keeper of Embers",
+        "Pyrite, Gilded Step" => "face:Pyrite, Gilded Step",
+        "Rook" => "face:Rook",
+        "Saif, Dune Sovereign" => "face:Saif, Dune Sovereign",
+        "Seo-yeon" => "face:Seo-yeon",
+        "Seraphine, Verdant Oracle" => "face:Seraphine, Verdant Oracle",
+        "Sergei, Winterfang" => "face:Sergei, Winterfang",
+        "Steven, Azure Shade" => "face:Steven, Azure Shade",
+        "Thorne" => "face:Thorne",
+        "Vaughn, Violet Oath" => "face:Vaughn, Violet Oath",
+        "Veyra, Stormseeker" => "face:Veyra, Stormseeker",
+        "Yeoungin, Winter's Grace" => "face:Yeoungin, Winter's Grace",
+        "Klara, Jade Tempest" => "face:Klara, Jade Tempest",
+        "Taisia" => "face:Taisia",
+        "Ysra" => "face:Ysra",
+        "Zephra" => "face:Zephra",
+        _ => return None,
+    })
+}
+
+fn face_portrait_bytes(name: &str) -> Option<&'static [u8]> {
+    Some(match name {
+        "Anya" => include_bytes!("../assets/portraits/anya.png"),
+        "Astraea, Starbound" => include_bytes!("../assets/portraits/astraea.png"),
+        "Brikka" => include_bytes!("../assets/portraits/brikka.png"),
+        "Cinder, Forgeheart" => include_bytes!("../assets/portraits/cinder.png"),
+        "Corvin" => include_bytes!("../assets/portraits/corvin.png"),
+        "Dolma" => include_bytes!("../assets/portraits/dolma.png"),
+        "Farah" => include_bytes!("../assets/portraits/farah.png"),
+        "Jeanette, Tidemender" => include_bytes!("../assets/portraits/jeanette.png"),
+        "Ji-ho" => include_bytes!("../assets/portraits/ji-ho.png"),
+        "Kaelis, Ashen Vanguard" => include_bytes!("../assets/portraits/kaelis.png"),
+        "Kestrel" => include_bytes!("../assets/portraits/kestrel.png"),
+        "Lumen" => include_bytes!("../assets/portraits/lumen.png"),
+        "Mako" => include_bytes!("../assets/portraits/mako.png"),
+        "Mira" => include_bytes!("../assets/portraits/mira.png"),
+        "Neris" => include_bytes!("../assets/portraits/neris.png"),
+        "Orin, Keeper of Embers" => include_bytes!("../assets/portraits/orin.png"),
+        "Pyrite, Gilded Step" => include_bytes!("../assets/portraits/pyrite.png"),
+        "Rook" => include_bytes!("../assets/portraits/rook.png"),
+        "Saif, Dune Sovereign" => include_bytes!("../assets/portraits/saif.png"),
+        "Seo-yeon" => include_bytes!("../assets/portraits/seo-yeon.png"),
+        "Seraphine, Verdant Oracle" => include_bytes!("../assets/portraits/seraphine.png"),
+        "Sergei, Winterfang" => include_bytes!("../assets/portraits/sergei.png"),
+        "Steven, Azure Shade" => include_bytes!("../assets/portraits/steven.png"),
+        "Thorne" => include_bytes!("../assets/portraits/thorne.png"),
+        "Vaughn, Violet Oath" => include_bytes!("../assets/portraits/vaughn.png"),
+        "Veyra, Stormseeker" => include_bytes!("../assets/portraits/veyra.png"),
+        "Yeoungin, Winter's Grace" => include_bytes!("../assets/portraits/yeoungin.png"),
+        "Klara, Jade Tempest" => include_bytes!("../assets/portraits/klara.png"),
+        "Taisia" => include_bytes!("../assets/portraits/taisia.png"),
+        "Ysra" => include_bytes!("../assets/portraits/ysra.png"),
+        "Zephra" => include_bytes!("../assets/portraits/zephra.png"),
         _ => return None,
     })
 }
@@ -181,6 +271,7 @@ mod tests {
             "Brikka",
             "Saif, Dune Sovereign",
             "Yeoungin, Winter's Grace",
+            "Klara, Jade Tempest",
             "Pyrite, Gilded Step",
             "Jeanette, Tidemender",
             "Polaris Edge",
@@ -205,12 +296,14 @@ mod tests {
             "Corvin",
             "Seo-yeon",
             "Ji-ho",
+            "Taisia",
             "Dreamwood Recurve",
             "Oathbreaker Thunder",
             "Veilfire Sutra",
             "White Hunt Reliquary",
             "Sandsworn Dominion",
             "Rimebound Benediction",
+            "Gale's Last Harvest",
             "Dawncool Steel",
             "Raven Bow",
             "Quartz Spear",
@@ -220,6 +313,19 @@ mod tests {
             assert!(
                 portrait_bytes(name).is_some(),
                 "missing protocol artwork for {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn every_character_face_has_protocol_portrait_bytes() {
+        for character in crate::simulation::all_characters() {
+            let key = face_portrait_key(character.name)
+                .unwrap_or_else(|| panic!("missing face key for {}", character.name));
+            assert!(
+                portrait_bytes(key).is_some(),
+                "missing face portrait bytes for {}",
+                character.name
             );
         }
     }
